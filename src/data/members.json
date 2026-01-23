@@ -1,0 +1,37 @@
+[
+    {
+        "rowIndex": 2,
+        "houseNo": "100/1",
+        "name": "คุณ สมชาย ใจดี",
+        "fee": 500,
+        "specialNote": "-"
+    },
+    {
+        "rowIndex": 3,
+        "houseNo": "100/2",
+        "name": "คุณ สมหญิง จริงใจ",
+        "fee": 500,
+        "specialNote": "-"
+    },
+    {
+        "rowIndex": 4,
+        "houseNo": "100/3",
+        "name": "คุณ มานะ อดทน",
+        "fee": 500,
+        "specialNote": "-"
+    },
+    {
+        "rowIndex": 5,
+        "houseNo": "100/4",
+        "name": "คุณ มานี มีสุข",
+        "fee": 500,
+        "specialNote": "-"
+    },
+    {
+        "rowIndex": 6,
+        "houseNo": "100/5",
+        "name": "คุณ ชูใจ ใฝ่ดี",
+        "fee": 500,
+        "specialNote": "-"
+    }
+]

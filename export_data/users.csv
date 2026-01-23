@@ -1,0 +1,5 @@
+Role,Password,IsEnabled
+member,111,true
+guard,222,true
+treasurer,369,true
+admin,999,true

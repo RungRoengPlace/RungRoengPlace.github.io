@@ -1,0 +1,26 @@
+[
+    {
+        "role": "member",
+        "password": "111",
+        "isEnabled": true,
+        "updated": "22/1/2026, 20:17:07"
+    },
+    {
+        "role": "guard",
+        "password": "222",
+        "isEnabled": true,
+        "updated": "22/1/2026, 20:17:17"
+    },
+    {
+        "role": "treasurer",
+        "password": "369",
+        "isEnabled": true,
+        "updated": "22/1/2026, 20:17:26"
+    },
+    {
+        "role": "admin",
+        "password": "999",
+        "isEnabled": true,
+        "updated": "22/1/2026, 20:17:37"
+    }
+]
