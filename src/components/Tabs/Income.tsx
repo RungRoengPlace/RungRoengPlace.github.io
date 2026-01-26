@@ -3,7 +3,7 @@ import { api } from '../../lib/api';
 import type { Income as IncomeType, DropdownData } from '../../types';
 import { MONTH_NAMES } from '../../types';
 import Swal from 'sweetalert2';
-import { Plus, Trash, Edit2, Save, X, Calendar, Layers } from 'lucide-react';
+import { Plus, Trash, Edit2, Save, X, Layers } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 
