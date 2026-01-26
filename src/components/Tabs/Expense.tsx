@@ -30,7 +30,7 @@ export const Expense = () => {
 
     const loadInitialData = async () => {
         setLoading(true);
-        const [dd, hist] = await Promise.all([api.getDropdownData(), api.getExpenses()]);
+        const [dd, hist] = await Promise.all([api.getDropdownData(), api.getExpenses(50)]);
         setDropdowns(dd);
         setHistory(hist);
         setLoading(false);
@@ -61,7 +61,7 @@ export const Expense = () => {
                 setIsEditing(false);
             }
 
-            const hist = await api.getExpenses();
+            const hist = await api.getExpenses(50);
             setHistory(hist);
         } catch (err) {
             Swal.fire('Error', 'เกิดข้อผิดพลาดในการบันทึก', 'error');
@@ -86,7 +86,7 @@ export const Expense = () => {
             Swal.showLoading();
             await api.deleteExpense(rowIndex);
             Swal.close();
-            const hist = await api.getExpenses();
+            const hist = await api.getExpenses(50);
             setHistory(hist);
         }
     };

@@ -3,7 +3,7 @@ import { api } from '../../lib/api';
 import type { Income as IncomeType, DropdownData } from '../../types';
 import { MONTH_NAMES } from '../../types';
 import Swal from 'sweetalert2';
-import { Plus, Trash, Edit2, Save } from 'lucide-react';
+import { Plus, Trash, Edit2, Save, X, Calendar, Layers } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 
@@ -25,13 +25,25 @@ export const Income = () => {
     const [formData, setFormData] = useState<IncomeType>(initialFormState);
     const [isEditing, setIsEditing] = useState(false);
 
+    // Multi-Pay State
+    const [showMultiPay, setShowMultiPay] = useState(false);
+    const [multiPayForm, setMultiPayForm] = useState({
+        houseNo: '',
+        name: '',
+        year: new Date().getFullYear(),
+        selectedMonths: [] as string[],
+        amountPerMonth: 0,
+        date: new Date().toISOString().split('T')[0],
+        note: 'ชำระค่าส่วนกลางล่วงหน้า'
+    });
+
     useEffect(() => {
         loadInitialData();
     }, []);
 
     const loadInitialData = async () => {
         setLoading(true);
-        const [dd, hist] = await Promise.all([api.getDropdownData(), api.getIncomes()]);
+        const [dd, hist] = await Promise.all([api.getDropdownData(), api.getIncomes(50)]);
         setDropdowns(dd);
         setHistory(hist);
 
@@ -78,7 +90,7 @@ export const Income = () => {
                 setIsEditing(false);
             }
 
-            const hist = await api.getIncomes();
+            const hist = await api.getIncomes(50);
             setHistory(hist);
         } catch (err) {
             Swal.fire('Error', 'เกิดข้อผิดพลาดในการบันทึก', 'error');
@@ -106,7 +118,86 @@ export const Income = () => {
             Swal.showLoading();
             await api.deleteIncome(rowIndex);
             Swal.close();
-            const hist = await api.getIncomes();
+            const hist = await api.getIncomes(50);
+            setHistory(hist);
+        }
+    };
+
+    // --- Multi Pay Handlers ---
+    const handleMultiPayHouseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const hNo = e.target.value;
+        const member = dropdowns?.members.find(m => m.houseNo === hNo);
+        setMultiPayForm(prev => ({
+            ...prev,
+            houseNo: hNo,
+            name: member ? member.name : '',
+            amountPerMonth: member ? member.commonFee : 0
+        }));
+    };
+
+    const toggleMultiPayMonth = (month: string) => {
+        setMultiPayForm(prev => {
+            const exists = prev.selectedMonths.includes(month);
+            return {
+                ...prev,
+                selectedMonths: exists
+                    ? prev.selectedMonths.filter(m => m !== month)
+                    : [...prev.selectedMonths, month]
+            };
+        });
+    };
+
+    const handleMultiPaySubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!multiPayForm.houseNo || multiPayForm.selectedMonths.length === 0) {
+            Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกบ้านเลขที่และอย่างน้อย 1 เดือน', 'warning');
+            return;
+        }
+
+        const total = multiPayForm.selectedMonths.length * multiPayForm.amountPerMonth;
+        const confirm = await Swal.fire({
+            title: 'ยืนยันการบันทึก?',
+            html: `บ้านเลขที่: <b>${multiPayForm.houseNo}</b><br/>` +
+                `จำนวน: <b>${multiPayForm.selectedMonths.length} เดือน</b><br/>` +
+                `รวมเป็นเงิน: <b>${total.toLocaleString()} บาท</b>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันการชำระ',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (confirm.isConfirmed) {
+            // Sort months by index to ensure chronological order if needed, though we save separate records
+            const sortedMonths = [...multiPayForm.selectedMonths].sort((a, b) => MONTH_NAMES.indexOf(a) - MONTH_NAMES.indexOf(b));
+
+            let successCount = 0;
+            for (const month of sortedMonths) {
+                Swal.update({
+                    title: `กำลังบันทึก...`,
+                    html: `เดือน: <b>${month}</b> (${successCount + 1}/${sortedMonths.length})`
+                });
+                Swal.showLoading();
+
+                const record: IncomeType = {
+                    date: multiPayForm.date,
+                    type: 'ค่าส่วนกลาง', // Default to common fee
+                    month: month,
+                    houseNo: multiPayForm.houseNo,
+                    name: multiPayForm.name,
+                    amount: multiPayForm.amountPerMonth,
+                    note: multiPayForm.note
+                };
+
+                await api.saveIncome(record);
+                successCount++;
+            }
+
+            Swal.fire('สำเร็จ', `บันทึกข้อมูลเรียบร้อย ${successCount} รายการ`, 'success');
+            setShowMultiPay(false);
+            setMultiPayForm(prev => ({ ...prev, houseNo: '', name: '', selectedMonths: [] })); // Reset key fields
+
+            // Refresh
+            const hist = await api.getIncomes(50);
             setHistory(hist);
         }
     };
@@ -127,6 +218,15 @@ export const Income = () => {
                     {isEditing && (
                         <button onClick={() => { setIsEditing(false); setFormData(initialFormState); }} className="text-sm text-red-500 hover:text-red-700 font-medium px-3 py-1 rounded-lg hover:bg-red-50">
                             ยกเลิกการแก้ไข
+                        </button>
+                    )}
+                    {!isEditing && (
+                        <button
+                            onClick={() => setShowMultiPay(true)}
+                            className="ml-auto text-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-4 py-2 rounded-xl border border-indigo-200 flex items-center shadow-sm transition-transform active:scale-95"
+                        >
+                            <Layers size={18} className="mr-2" />
+                            ชำระหลายเดือน
                         </button>
                     )}
                 </div>
@@ -196,6 +296,8 @@ export const Income = () => {
                             <tr>
                                 <th className="px-6 py-3 whitespace-nowrap">วันที่</th>
                                 <th className="px-6 py-3 whitespace-nowrap">บ้านเลขที่</th>
+                                <th className="px-6 py-3 whitespace-nowrap">ประเภท</th>
+                                <th className="px-6 py-3 whitespace-nowrap">ประจำเดือน</th>
                                 <th className="px-6 py-3 text-right whitespace-nowrap">จำนวนเงิน</th>
                                 <th className="px-6 py-3 whitespace-nowrap">หมายเหตุ</th>
                                 <th className="px-6 py-3 text-center whitespace-nowrap">จัดการ</th>
@@ -203,7 +305,7 @@ export const Income = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {history.length === 0 ? (
-                                <tr><td colSpan={5} className="text-center py-8 text-slate-400">ไม่พบข้อมูลบันทึกรายรับ</td></tr>
+                                <tr><td colSpan={7} className="text-center py-8 text-slate-400">ไม่พบข้อมูลบันทึกรายรับ</td></tr>
                             ) :
                                 history.map((item) => (
                                     <tr key={item.rowIndex} className="hover:bg-slate-50 transition-colors group">
@@ -211,6 +313,8 @@ export const Income = () => {
                                         <td className="px-6 py-4 font-medium text-slate-700">
                                             {item.houseNo} <span className="text-xs text-slate-400 block">{item.name}</span>
                                         </td>
+                                        <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{item.type}</td>
+                                        <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{item.month}</td>
                                         <td className="px-6 py-4 text-right font-bold text-teal-600 font-mono">{item.amount.toLocaleString()}</td>
                                         <td className="px-6 py-4 text-slate-500 max-w-xs truncate">{item.note}</td>
                                         <td className="px-6 py-4 flex justify-center space-x-3 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -223,6 +327,114 @@ export const Income = () => {
                     </table>
                 </div>
             </div>
+            {/* Multi Pay Modal */}
+            {showMultiPay && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-10 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center">
+                                    <Layers className="mr-2 text-indigo-600" /> ชำระค่าส่วนกลางแบบเหมาจ่าย
+                                </h3>
+                                <p className="text-sm text-slate-500">บันทึกรับเงินล่วงหน้าหลายเดือนในครั้งเดียว</p>
+                            </div>
+                            <button onClick={() => setShowMultiPay(false)} className="text-slate-400 hover:text-red-500 transition-colors bg-white p-2 rounded-full shadow-sm">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Row 1: House & Date */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">บ้านเลขที่</label>
+                                    <select value={multiPayForm.houseNo} onChange={handleMultiPayHouseChange} className="w-full border-slate-200 rounded-xl p-3 bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 font-medium">
+                                        <option value="">-- เลือกบ้านเลขที่ --</option>
+                                        {dropdowns?.members.map(m => <option key={m.houseNo} value={m.houseNo}>{m.houseNo} ({m.name})</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">วันที่ชำระเงิน</label>
+                                    <input type="date" value={multiPayForm.date} onChange={e => setMultiPayForm({ ...multiPayForm, date: e.target.value })} className="w-full border-slate-200 rounded-xl p-3 bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                                </div>
+                            </div>
+
+                            {/* Row 2: Info & Amount */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ชื่อสมาชิก</label>
+                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700">{multiPayForm.name || '-'}</div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ค่าส่วนกลาง/เดือน</label>
+                                    <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-700 font-bold text-right font-mono">{multiPayForm.amountPerMonth.toLocaleString()}</div>
+                                </div>
+                            </div>
+
+                            <hr className="border-slate-100" />
+
+                            {/* Month Selector */}
+                            <div>
+                                <div className="flex justify-between items-end mb-3">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">เลือกเดือนที่ชำระ (ปี {multiPayForm.year + 543})</label>
+                                    <div className="flex space-x-2">
+                                        <button type="button" onClick={() => setMultiPayForm(p => ({ ...p, selectedMonths: [...MONTH_NAMES] }))} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">เลือกทั้งหมด</button>
+                                        <button type="button" onClick={() => setMultiPayForm(p => ({ ...p, selectedMonths: [] }))} className="text-xs bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-500 px-2 py-1 rounded">ล้าง</button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                                    {MONTH_NAMES.map((month) => {
+                                        const isSelected = multiPayForm.selectedMonths.includes(month);
+                                        return (
+                                            <button
+                                                key={month}
+                                                type="button"
+                                                onClick={() => toggleMultiPayMonth(month)}
+                                                className={clsx(
+                                                    "p-3 rounded-xl border text-sm font-bold transition-all duration-200 flex flex-col items-center justify-center space-y-1 relative overflow-hidden",
+                                                    isSelected
+                                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200 transform scale-105"
+                                                        : "bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                <span>{month}</span>
+                                                {isSelected && <div className="absolute top-1 right-1"><div className="w-2 h-2 bg-white rounded-full"></div></div>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Summary & Note */}
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ</label>
+                                    <input type="text" value={multiPayForm.note} onChange={e => setMultiPayForm({ ...multiPayForm, note: e.target.value })} className="w-full border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                    <span className="text-slate-600 font-medium">จำนวนเดือนที่เลือก: <span className="text-indigo-600 font-bold">{multiPayForm.selectedMonths.length}</span> เดือน</span>
+                                    <div className="text-right">
+                                        <span className="text-xs text-slate-500 mr-2">รวมเป็นเงินทั้งสิ้น</span>
+                                        <span className="text-2xl font-bold text-indigo-700">{(multiPayForm.selectedMonths.length * multiPayForm.amountPerMonth).toLocaleString()}</span>
+                                        <span className="text-xs text-slate-500 ml-1">บาท</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-3 rounded-b-2xl">
+                            <button onClick={() => setShowMultiPay(false)} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors">ยกเลิก</button>
+                            <button onClick={handleMultiPaySubmit} disabled={multiPayForm.selectedMonths.length === 0 || !multiPayForm.houseNo} className="px-8 py-3 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                                <Save size={18} className="mr-2" />
+                                ยืนยันการบันทึก
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

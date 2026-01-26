@@ -50,10 +50,11 @@ export const api = {
         };
     },
 
-    getIncomes: async (): Promise<Income[]> => {
-        if (USE_REAL_API && !isGuestMode) return await fetchGet('getIncomes');
+    getIncomes: async (limit: number = 0): Promise<Income[]> => {
+        if (USE_REAL_API && !isGuestMode) return await fetchGet('getIncomes', limit > 0 ? `&limit=${limit}` : '');
         await delay(600);
-        return [...mockIncomes].reverse();
+        const data = [...mockIncomes].reverse();
+        return limit > 0 ? data.slice(0, limit) : data;
     },
 
     saveIncome: async (data: Income) => {
@@ -75,10 +76,11 @@ export const api = {
         return { status: 'success' };
     },
 
-    getExpenses: async (): Promise<Expense[]> => {
-        if (USE_REAL_API && !isGuestMode) return await fetchGet('getExpenses');
+    getExpenses: async (limit: number = 0): Promise<Expense[]> => {
+        if (USE_REAL_API && !isGuestMode) return await fetchGet('getExpenses', limit > 0 ? `&limit=${limit}` : '');
         await delay(600);
-        return [...mockExpenses].reverse();
+        const data = [...mockExpenses].reverse();
+        return limit > 0 ? data.slice(0, limit) : data;
     },
 
     saveExpense: async (data: Expense) => {

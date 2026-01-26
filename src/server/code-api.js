@@ -12,8 +12,14 @@ function doGet(e) {
 
     try {
         if (action === 'getDropdownData') result = getDataForDropdowns();
-        else if (action === 'getIncomes') result = getRecentIncome();
-        else if (action === 'getExpenses') result = getRecentExpense();
+        else if (action === 'getIncomes') {
+            const limit = e.parameter.limit ? parseInt(e.parameter.limit) : 0;
+            result = getRecentIncome(limit);
+        }
+        else if (action === 'getExpenses') {
+            const limit = e.parameter.limit ? parseInt(e.parameter.limit) : 0;
+            result = getRecentExpense(limit);
+        }
         else if (action === 'getMembers') result = getMembersData();
         else if (action === 'getSecurityRecords') result = getSecurityData();
         else if (action === 'getUsers') result = getUsersData();
@@ -180,18 +186,27 @@ function deleteIncome(rowIndex) {
     } catch (e) { throw new Error("Delete Error: " + e.message); }
 }
 
-function getRecentIncome() {
+function getRecentIncome(limit = 0) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = getSheet(ss, ['บันทึกรายรับ', 'incomes']);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
-    // Fetch ALL data (was limited to 50)
     const lastRow = sheet.getLastRow();
-    const numRows = lastRow - 1;
-    const data = sheet.getRange(2, 1, numRows, 7).getValues();
+
+    // Default: Fetch ALL rows if limit is 0
+    let numRows = lastRow - 1;
+    let startRow = 2;
+
+    // Apply limit if specified
+    if (limit > 0) {
+        numRows = Math.min(limit, lastRow - 1);
+        startRow = lastRow - numRows + 1;
+    }
+
+    const data = sheet.getRange(startRow, 1, numRows, 7).getValues();
 
     return data.map((row, index) => ({
-        rowIndex: index + 2, // Row index starts at 2
+        rowIndex: startRow + index,
         date: row[0] instanceof Date ? row[0].toISOString() : row[0],
         type: row[1],
         month: row[2],
@@ -234,18 +249,27 @@ function deleteExpense(rowIndex) {
     } catch (e) { throw new Error("Delete Error: " + e.message); }
 }
 
-function getRecentExpense() {
+function getRecentExpense(limit = 0) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = getSheet(ss, ['บันทึกรายจ่าย', 'expenses']);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
-    // Fetch ALL data (was limited to 50)
     const lastRow = sheet.getLastRow();
-    const numRows = lastRow - 1;
-    const data = sheet.getRange(2, 1, numRows, 6).getValues();
+
+    // Default: Fetch ALL rows if limit is 0
+    let numRows = lastRow - 1;
+    let startRow = 2;
+
+    // Apply limit if specified
+    if (limit > 0) {
+        numRows = Math.min(limit, lastRow - 1);
+        startRow = lastRow - numRows + 1;
+    }
+
+    const data = sheet.getRange(startRow, 1, numRows, 6).getValues();
 
     return data.map((row, index) => ({
-        rowIndex: index + 2, // Row index starts at 2
+        rowIndex: startRow + index,
         date: row[0] instanceof Date ? row[0].toISOString() : row[0],
         type: row[1],
         month: row[2],
