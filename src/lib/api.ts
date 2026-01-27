@@ -1,4 +1,4 @@
-import type { Income, Expense, Member, DropdownData, SecurityRecord, User } from '../types';
+import type { Income, Expense, Member, DropdownData, SecurityRecord, User, BookBankMovement } from '../types';
 
 import dataIncomes from '../data/incomes.json';
 import dataExpenses from '../data/expenses.json';
@@ -15,7 +15,7 @@ import dataUsers from '../data/users.json';
 // 2. Paste the URL below
 // 3. Set USE_REAL_API = true
 const USE_REAL_API = true;
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxgpl1uxA7g2HCBGHlWqTvqseJWevIfpKvhJxyNzOrPekEtTc6B5fGEd1BomnYJ6WZqcw/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6EIrquDLF2msJcNmG3scPGJWiWTfukLSpEBWm3tWaO_vN2A0v4D0B8yjooN-eszadEQ/exec';
 let isGuestMode = false;
 // ==========================================
 
@@ -27,6 +27,7 @@ let mockSecurityRecords: SecurityRecord[] = [
     { rowIndex: 2, date: '2024-03-20', timeIn: '08:00', timeOut: '17:00', visitorName: 'ช่างไฟ', plateNumber: '1กข-1234', houseNo: '101/1', purpose: 'ซ่อมไฟ' }
 ];
 let mockUsers: User[] = (dataUsers as any[]).map(u => ({ ...u, isEnabled: u.isEnabled === true })) as User[];
+let mockBookBankMovements: BookBankMovement[] = []; // Initial empty mock data or add sample if prefer
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -149,6 +150,32 @@ export const api = {
         if (USE_REAL_API && !isGuestMode) return await fetchPost('deleteSecurityRecord', { rowIndex });
         await delay(500);
         mockSecurityRecords = mockSecurityRecords.filter(s => s.rowIndex !== Number(rowIndex));
+        return { status: 'success' };
+    },
+
+    getBookBankMovements: async (limit: number = 0): Promise<BookBankMovement[]> => {
+        if (USE_REAL_API && !isGuestMode) return await fetchGet('getBookBankMovements', limit > 0 ? `&limit=${limit}` : '');
+        await delay(600);
+        const data = [...mockBookBankMovements].reverse();
+        return limit > 0 ? data.slice(0, limit) : data;
+    },
+
+    saveBookBankMovement: async (data: BookBankMovement) => {
+        if (USE_REAL_API && !isGuestMode) return await fetchPost('saveBookBankMovement', data);
+        await delay(800);
+        if (data.rowIndex) {
+            const idx = mockBookBankMovements.findIndex(b => b.rowIndex === Number(data.rowIndex));
+            if (idx !== -1) mockBookBankMovements[idx] = data;
+        } else {
+            mockBookBankMovements.push({ ...data, rowIndex: Date.now() });
+        }
+        return { status: 'success' };
+    },
+
+    deleteBookBankMovement: async (rowIndex: number) => {
+        if (USE_REAL_API && !isGuestMode) return await fetchPost('deleteBookBankMovement', { rowIndex });
+        await delay(500);
+        mockBookBankMovements = mockBookBankMovements.filter(b => b.rowIndex !== Number(rowIndex));
         return { status: 'success' };
     },
 

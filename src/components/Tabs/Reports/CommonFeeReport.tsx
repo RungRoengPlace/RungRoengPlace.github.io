@@ -41,16 +41,25 @@ export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear,
         reportDiv.style.position = 'relative'; // Ensure positioning context
         reportDiv.appendChild(timestampDiv);
 
+
         // Expand scrollable areas
         const scrollableDiv = reportDiv.querySelector('.overflow-auto') as HTMLElement;
+        const printHeader = reportDiv.querySelector('#print-header') as HTMLElement;
         let originalOverflow = '';
         let originalMaxHeight = '';
+        let originalDisplay = '';
 
         if (scrollableDiv) {
             originalOverflow = scrollableDiv.style.overflow;
             originalMaxHeight = scrollableDiv.style.maxHeight;
             scrollableDiv.style.overflow = 'visible';
             scrollableDiv.style.maxHeight = 'none';
+        }
+
+        if (printHeader) {
+            originalDisplay = printHeader.style.display;
+            printHeader.classList.remove('hidden');
+            printHeader.style.display = 'block';
         }
 
         try {
@@ -73,8 +82,13 @@ export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear,
                 scrollableDiv.style.overflow = originalOverflow;
                 scrollableDiv.style.maxHeight = originalMaxHeight;
             }
+            if (printHeader) {
+                printHeader.classList.add('hidden');
+                printHeader.style.display = originalDisplay;
+            }
         }
     };
+
 
     const getFeeStatus = (houseNo: string, monthIndex: number) => {
         const monthName = MONTH_NAMES[monthIndex];
@@ -183,7 +197,7 @@ export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear,
                         onChange={(e) => setYear(Number(e.target.value))}
                         className="border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none text-blue-800 font-bold"
                     >
-                        {[...Array(5)].map((_, i) => {
+                        {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => {
                             const y = new Date().getFullYear() - i;
                             return <option key={y} value={y}>ปี {y + 543} ({y})</option>;
                         })}

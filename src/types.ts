@@ -38,6 +38,15 @@ export interface SecurityRecord {
   purpose: string;
 }
 
+export interface BookBankMovement {
+  rowIndex?: number;
+  date: string;
+  account: string; // 'บัญชีหลัก' | 'บัญชีรอง'
+  type: string; // 'ฝาก' | 'ถอน'
+  amount: number;
+  note: string;
+}
+
 export interface DropdownData {
   incomeTypes: string[];
   expenseTypes: string[];

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import type { Member, Income, Expense } from '../../types';
+import type { Member, Income, Expense, BookBankMovement } from '../../types';
 import { CommonFeeReport } from './Reports/CommonFeeReport';
 import { ExpenseSummary } from './Reports/ExpenseSummary';
-import { PieChart, ListChecks } from 'lucide-react';
+import { BookBankReport } from './Reports/BookBankReport';
+import { PieChart, ListChecks, Landmark } from 'lucide-react';
 import clsx from 'clsx';
 
 export const Reports = () => {
@@ -12,7 +13,8 @@ export const Reports = () => {
     const [members, setMembers] = useState<Member[]>([]);
     const [incomes, setIncomes] = useState<Income[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [view, setView] = useState<'fee' | 'expense'>('fee');
+    const [bookMovements, setBookMovements] = useState<BookBankMovement[]>([]);
+    const [view, setView] = useState<'fee' | 'expense' | 'bookBank'>('fee');
 
     useEffect(() => {
         loadData();
@@ -20,14 +22,23 @@ export const Reports = () => {
 
     const loadData = async () => {
         setLoading(true);
-        const [m, i, e] = await Promise.all([
+        const [m, i, e, b] = await Promise.all([
             api.getMembers(),
             api.getIncomes(),
-            api.getExpenses()
+            api.getExpenses(),
+            api.getBookBankMovements()
         ]);
         setMembers(m);
         setIncomes(i);
         setExpenses(e);
+
+        if (Array.isArray(b)) {
+            setBookMovements(b);
+        } else {
+            console.error("Failed to load book movements", b);
+            setBookMovements([]);
+        }
+
         setLoading(false);
     };
 
@@ -71,16 +82,29 @@ export const Reports = () => {
                         <PieChart size={18} />
                         <span>สรุปรายจ่าย</span>
                     </button>
+
+                    <div className="w-px bg-slate-200 my-2 mx-1"></div>
+
+                    <button
+                        onClick={() => setView('bookBank')}
+                        className={clsx(
+                            "flex items-center space-x-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 text-sm",
+                            view === 'bookBank'
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                        )}
+                    >
+                        <Landmark size={18} />
+                        <span>เงินในบัญชี</span>
+                    </button>
                 </div>
             </div>
 
             {/* Content Area */}
             <div className="min-h-[500px]">
-                {view === 'fee' ? (
-                    <CommonFeeReport year={year} setYear={setYear} members={members} incomes={incomes} />
-                ) : (
-                    <ExpenseSummary year={year} setYear={setYear} expenses={expenses} />
-                )}
+                {view === 'fee' && <CommonFeeReport year={year} setYear={setYear} members={members} incomes={incomes} />}
+                {view === 'expense' && <ExpenseSummary year={year} setYear={setYear} expenses={expenses} />}
+                {view === 'bookBank' && <BookBankReport year={year} setYear={setYear} movements={bookMovements} expenses={expenses} incomes={incomes} />}
             </div>
         </div>
     );

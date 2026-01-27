@@ -51,8 +51,10 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
 
         // Expand scrollable areas
         const scrollableDiv = reportDiv.querySelector('.overflow-x-auto') as HTMLElement;
+        const clippedParent = reportDiv.querySelector('.overflow-hidden') as HTMLElement;
         let originalOverflow = '';
         let originalMaxHeight = '';
+        let originalParentOverflow = '';
 
         if (scrollableDiv) {
             originalOverflow = scrollableDiv.style.overflow;
@@ -61,11 +63,27 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
             scrollableDiv.style.maxHeight = 'none';
         }
 
+        if (clippedParent) {
+            originalParentOverflow = clippedParent.style.overflow;
+            clippedParent.style.overflow = 'visible';
+        }
+
+        const printHeader = reportDiv.querySelector('#print-header') as HTMLElement;
+        let originalDisplay = '';
+        if (printHeader) {
+            originalDisplay = printHeader.style.display;
+            printHeader.classList.remove('hidden');
+            printHeader.style.display = 'block';
+        }
+
         try {
+            const desiredWidth = reportDiv.scrollWidth;
             const canvas = await html2canvas(reportDiv, {
                 scale: 2,
                 backgroundColor: '#f8fafc',
-                ignoreElements: (element) => element.classList.contains('no-print') // Helper class to hide elements if needed
+                width: desiredWidth, // Ensure canvas is wide enough
+                windowWidth: desiredWidth, // Ensure window is simulated wide enough
+                ignoreElements: (element) => element.classList.contains('no-print')
             });
 
             const image = canvas.toDataURL("image/png");
@@ -81,6 +99,13 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
             if (scrollableDiv) {
                 scrollableDiv.style.overflow = originalOverflow;
                 scrollableDiv.style.maxHeight = originalMaxHeight;
+            }
+            if (clippedParent) {
+                clippedParent.style.overflow = originalParentOverflow;
+            }
+            if (printHeader) {
+                printHeader.classList.add('hidden');
+                printHeader.style.display = originalDisplay;
             }
         }
     };
@@ -194,8 +219,9 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
                         onChange={(e) => setYear(Number(e.target.value))}
                         className="border border-purple-200 rounded-lg p-2 bg-white focus:ring-2 focus:ring-purple-500 outline-none text-purple-800 font-bold"
                     >
-                        {[...Array(5)].map((_, i) => {
-                            const y = new Date().getFullYear() - i;
+                        {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => {
+                            const currentYear = new Date().getFullYear();
+                            const y = currentYear - i;
                             return <option key={y} value={y}>ปี {y + 543} ({y})</option>;
                         })}
                     </select>
@@ -204,6 +230,10 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
 
             {/* Charts Row & Table Container for Print */}
             <div ref={reportRef} className="space-y-6 bg-slate-50/50 p-4 rounded-xl">
+                <div className="mb-4 text-center hidden" id="print-header">
+                    <h1 className="text-2xl font-bold text-slate-800">สรุปรายจ่ายประจำปี {year + 543}</h1>
+                </div>
+
                 {/* Charts Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Pie Chart */}
@@ -247,9 +277,9 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
                     {/* Bar Chart */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[400px] flex flex-col">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-purple-900 flex items-center truncate">
+                            <h3 className="font-bold text-purple-900 flex items-center">
                                 <BarChart3 size={18} className="mr-2 text-purple-500 shrink-0" />
-                                <span className="truncate">
+                                <span>
                                     รายจ่ายรายเดือน: {selectedType || 'ภาพรวมรายจ่ายทั้งหมด'}
                                 </span>
                             </h3>

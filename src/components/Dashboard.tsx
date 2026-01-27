@@ -6,8 +6,9 @@ import { Income } from './Tabs/Income';
 import { Expense } from './Tabs/Expense';
 import { Members } from './Tabs/Members';
 import { SecurityGuard } from './Tabs/SecurityGuard';
+import { BookBank } from './Tabs/BookBank';
 import { UserManagement } from './Tabs/Settings/UserManagement';
-import { Wallet, Receipt, Users, PieChart, Shield, Settings } from 'lucide-react';
+import { Wallet, Receipt, Users, PieChart, Shield, Settings, Landmark } from 'lucide-react';
 import clsx from 'clsx';
 
 interface DashboardProps {
@@ -22,11 +23,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ role, onLogout }) => {
         return 'reports';
     };
 
-    const [activeTab, setActiveTab] = useState<'reports' | 'income' | 'expense' | 'security' | 'settings'>(getDefaultTab());
+    const [activeTab, setActiveTab] = useState<'reports' | 'income' | 'expense' | 'bookBank' | 'security' | 'settings'>(getDefaultTab());
     const [showMembers, setShowMembers] = useState(false);
+    const [showPermissions, setShowPermissions] = useState(true);
 
     const canViewReports = role === 'member' || role === 'treasurer' || role === 'admin' || role === 'guest';
     const canEditFinance = role === 'treasurer' || role === 'admin' || role === 'guest';
+    const canManageBookBank = role === 'treasurer' || role === 'admin';
     const canManageMembers = role === 'admin';
     const isGuard = role === 'guard' || role === 'guest';
 
@@ -77,6 +80,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ role, onLogout }) => {
                         </>
                     )}
 
+                    {canManageBookBank && (
+                        <button
+                            onClick={() => setActiveTab('bookBank')}
+                            className={clsx(
+                                "flex items-center space-x-2 px-4 md:px-6 py-3 rounded-xl font-bold transition-all duration-300 text-sm md:text-base",
+                                activeTab === 'bookBank' ? "bg-blue-600 text-white shadow-lg shadow-blue-200 transform scale-105" : "text-slate-500 hover:bg-slate-50"
+                            )}
+                        >
+                            <Landmark size={18} />
+                            <span>บันทึกยอดเงิน</span>
+                        </button>
+                    )}
+
                     {isGuard && (
                         <button
                             onClick={() => setActiveTab('security')}
@@ -100,7 +116,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ role, onLogout }) => {
                             )}
                         >
                             <Settings size={18} />
-                            <span>ตั้งค่า สมาชิก</span>
+                            <span>ตั้งค่าระบบ</span>
                         </button>
                     )}
                 </nav>
@@ -110,36 +126,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ role, onLogout }) => {
                     {activeTab === 'reports' && canViewReports && <Reports />}
                     {activeTab === 'income' && canEditFinance && <Income />}
                     {activeTab === 'expense' && canEditFinance && <Expense />}
+                    {activeTab === 'bookBank' && canManageBookBank && <BookBank />}
                     {activeTab === 'security' && isGuard && <SecurityGuard />}
-                    {activeTab === 'settings' && canManageMembers && <UserManagement />}
+
+                    {/* Settings Sections (Admin Only) */}
+                    {activeTab === 'settings' && canManageMembers && (
+                        <div className="space-y-6">
+                            {/* Permissions Section */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                <button
+                                    onClick={() => setShowPermissions(!showPermissions)}
+                                    className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group bg-slate-50/50"
+                                >
+                                    <div className="flex items-center space-x-3 text-slate-700 font-bold text-lg">
+                                        <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors text-slate-600">
+                                            <Settings size={24} />
+                                        </div>
+                                        <span>ตั้งค่าสิทธิ์การใช้งาน</span>
+                                    </div>
+                                    <div className={clsx("transition-transform duration-300 text-slate-400", showPermissions ? "rotate-180" : "")}>
+                                        <i className="fa-solid fa-chevron-down"></i>
+                                    </div>
+                                </button>
+
+                                {showPermissions && (
+                                    <div className="p-4 border-t border-slate-100 animate-fade-in-up">
+                                        <UserManagement />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Members Section */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                <button
+                                    onClick={() => setShowMembers(!showMembers)}
+                                    className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group bg-indigo-50/30"
+                                >
+                                    <div className="flex items-center space-x-3 text-indigo-700 font-bold text-lg">
+                                        <div className="p-2 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors text-indigo-600">
+                                            <Users size={24} />
+                                        </div>
+                                        <span>จัดการรายชื่อสมาชิก</span>
+                                    </div>
+                                    <div className={clsx("transition-transform duration-300 text-indigo-400", showMembers ? "rotate-180" : "")}>
+                                        <i className="fa-solid fa-chevron-down"></i>
+                                    </div>
+                                </button>
+
+                                {showMembers && (
+                                    <div className="p-4 border-t border-slate-100 animate-fade-in-up">
+                                        <Members />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
-
-                {/* Members Section (Admin Only - Only on Settings Tab) */}
-                {activeTab === 'settings' && canManageMembers && (
-                    <div className="mt-12 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <button
-                            onClick={() => setShowMembers(!showMembers)}
-                            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group bg-indigo-50/30"
-                        >
-                            <div className="flex items-center space-x-3 text-indigo-700 font-bold text-lg">
-                                <div className="p-2 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors text-indigo-600">
-                                    <Users size={24} />
-                                </div>
-                                <span>จัดการรายชื่อสมาชิก</span>
-                            </div>
-                            <div className={clsx("transition-transform duration-300 text-indigo-400", showMembers ? "rotate-180" : "")}>
-                                <i className="fa-solid fa-chevron-down"></i>
-                            </div>
-                        </button>
-
-                        {showMembers && (
-                            <div className="p-4 border-t border-slate-100 animate-fade-in-up">
-                                <Members />
-                            </div>
-                        )}
-                    </div>
-                )}
             </main>
-        </div>
+        </div >
     );
 };

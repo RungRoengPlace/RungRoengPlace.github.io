@@ -3,7 +3,18 @@
 
 const SPREADSHEET_ID = '1NxPw9CGZOmK40yEaQbRMMAs8FYgaD-U-h2rVsWuKuUg';
 
+function getSS() {
+    // Attempt to get active spreadsheet (if bound)
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss;
+    // Fallback to ID
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
 function doGet(e) {
+    // Fix: Allow running in editor without error
+    if (!e) e = { parameter: { action: 'ping' } };
+
     const action = e.parameter.action;
     let result = {};
 
@@ -23,11 +34,16 @@ function doGet(e) {
         else if (action === 'getMembers') result = getMembersData();
         else if (action === 'getSecurityRecords') result = getSecurityData();
         else if (action === 'getUsers') result = getUsersData();
+        else if (action === 'getBookBankMovements') {
+            const limit = e.parameter.limit ? parseInt(e.parameter.limit) : 0;
+            result = getBookBankData(limit);
+        }
         else if (action === 'verifyPassword') {
             const role = e.parameter.role;
             const pass = e.parameter.pass;
             result = verifyPassword(role, pass);
         }
+        else if (action === 'ping') result = { status: 'ok', message: 'API is working' };
         else result = { error: 'Unknown action' };
 
         output.setContent(JSON.stringify(result));
@@ -41,6 +57,11 @@ function doGet(e) {
 }
 
 function doPost(e) {
+    // Fix: Allow running in editor without error
+    if (!e) {
+        return ContentService.createTextOutput("Cannot run doPost manually without data.");
+    }
+
     const output = ContentService.createTextOutput();
     try {
         const data = JSON.parse(e.postData.contents);
@@ -59,6 +80,9 @@ function doPost(e) {
         else if (action === 'deleteSecurityRecord') result = deleteSecurityRecord(payload.rowIndex);
         // Users
         else if (action === 'saveUser') result = saveUser(payload);
+        // Book Bank
+        else if (action === 'saveBookBankMovement') result = saveBookBankMovement(payload);
+        else if (action === 'deleteBookBankMovement') result = deleteBookBankMovement(payload.rowIndex);
         else result = { error: 'Unknown action' };
 
         output.setContent(JSON.stringify(result));
@@ -102,7 +126,7 @@ function ensureHeader(sheet, headers) {
 
 // --- Dropdown Data & Initial Load ---
 function getDataForDropdowns() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     const incTypeSheet = getSheet(ss, ['ประเภทรายรับ', 'income_types']);
     const incTypes = getCleanData(incTypeSheet, 1);
     const expTypeSheet = getSheet(ss, ['ประเภทรายจ่าย', 'expense_types']);
@@ -126,7 +150,7 @@ function getDataForDropdowns() {
 // --- Helper: Get Min Year ---
 function getMinDataYear() {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         let minYear = new Date().getFullYear();
         // Check both Thai and English names
         const sheetNamesToCheck = [
@@ -157,7 +181,7 @@ function getMinDataYear() {
 // --- CRUD: Income ---
 function saveIncome(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         let sheet = getSheet(ss, ['บันทึกรายรับ', 'incomes']);
         if (!sheet) sheet = ss.insertSheet('บันทึกรายรับ');
         ensureHeader(sheet, ['วันที่บันทึก', 'ประเภทรายรับ', 'ประจำเดือน', 'เลขที่/หลังที่', 'ชื่อ - สกุล', 'จำนวนเงิน', 'หมายเหตุ', 'Timestamp']);
@@ -168,7 +192,7 @@ function saveIncome(data) {
 
 function updateIncome(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['บันทึกรายรับ', 'incomes']);
         const rowIndex = parseInt(data.rowIndex);
         sheet.getRange(rowIndex, 1, 1, 7).setValues([[data.date, data.type, data.month, "'" + data.houseNo, data.name, data.amount, data.note]]);
@@ -179,7 +203,7 @@ function updateIncome(data) {
 
 function deleteIncome(rowIndex) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['บันทึกรายรับ', 'incomes']);
         sheet.deleteRow(parseInt(rowIndex));
         return { status: 'success' };
@@ -187,7 +211,7 @@ function deleteIncome(rowIndex) {
 }
 
 function getRecentIncome(limit = 0) {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     const sheet = getSheet(ss, ['บันทึกรายรับ', 'incomes']);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
@@ -220,7 +244,7 @@ function getRecentIncome(limit = 0) {
 // --- CRUD: Expense ---
 function saveExpense(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         let sheet = getSheet(ss, ['บันทึกรายจ่าย', 'expenses']);
         if (!sheet) sheet = ss.insertSheet('บันทึกรายจ่าย');
         ensureHeader(sheet, ['วันที่บันทึก', 'ประเภทรายจ่าย', 'ประจำเดือน', 'รายละเอียด', 'จำนวนเงิน', 'หมายเหตุ', 'Timestamp']);
@@ -231,7 +255,7 @@ function saveExpense(data) {
 
 function updateExpense(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['บันทึกรายจ่าย', 'expenses']);
         const rowIndex = parseInt(data.rowIndex);
         sheet.getRange(rowIndex, 1, 1, 6).setValues([[data.date, data.type, data.month, data.details, data.amount, data.note]]);
@@ -242,7 +266,7 @@ function updateExpense(data) {
 
 function deleteExpense(rowIndex) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['บันทึกรายจ่าย', 'expenses']);
         sheet.deleteRow(parseInt(rowIndex));
         return { status: 'success' };
@@ -250,7 +274,7 @@ function deleteExpense(rowIndex) {
 }
 
 function getRecentExpense(limit = 0) {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     const sheet = getSheet(ss, ['บันทึกรายจ่าย', 'expenses']);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
@@ -281,7 +305,7 @@ function getRecentExpense(limit = 0) {
 
 // --- CRUD: Members ---
 function getMembersData() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     let sheet = getSheet(ss, ['รายชื่อสมาชิก', 'members']);
     if (!sheet) return [];
     if (sheet.getLastRow() < 2) return [];
@@ -298,7 +322,7 @@ function getMembersData() {
 
 function saveMember(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         let sheet = getSheet(ss, ['รายชื่อสมาชิก', 'members']);
         if (!sheet) sheet = ss.insertSheet('รายชื่อสมาชิก');
         ensureHeader(sheet, ['ลำดับ', 'เลขที่/หลังที่', 'ชื่อ - สกุล', 'ค่าส่วนกลาง (บาท)', 'Special Note']);
@@ -317,7 +341,7 @@ function saveMember(data) {
 
 function deleteMember(rowIndex) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['รายชื่อสมาชิก', 'members']);
         sheet.deleteRow(parseInt(rowIndex));
         return { status: 'success' };
@@ -327,7 +351,7 @@ function deleteMember(rowIndex) {
 // --- Auth / Settings Same as Before ---
 function verifyPassword(role, inputPassword) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['ผู้ใช้', 'users']);
         if (!sheet || sheet.getLastRow() < 2) return { valid: false, message: 'No users found' };
 
@@ -355,7 +379,7 @@ function verifyPassword(role, inputPassword) {
 }
 // --- CRUD: Security Records ---
 function getSecurityData() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     let sheet = getSheet(ss, ['บันทึก รปภ.', 'security']);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
@@ -380,7 +404,7 @@ function getSecurityData() {
 
 function saveSecurityRecord(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         let sheet = getSheet(ss, ['บันทึก รปภ.', 'security']);
         if (!sheet) sheet = ss.insertSheet('บันทึก รปภ.');
         ensureHeader(sheet, ['วันที่', 'เวลาเข้า', 'เวลาออก', 'ผู้มาติดต่อ', 'ทะเบียนรถ', 'บ้านเลขที่', 'วัตถุประสงค์', 'Timestamp']);
@@ -402,7 +426,7 @@ function saveSecurityRecord(data) {
 
 function deleteSecurityRecord(rowIndex) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         const sheet = getSheet(ss, ['บันทึก รปภ.', 'security']);
         sheet.deleteRow(parseInt(rowIndex));
         return { status: 'success' };
@@ -411,7 +435,7 @@ function deleteSecurityRecord(rowIndex) {
 
 // --- CRUD: Users ---
 function getUsersData() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     let sheet = getSheet(ss, ['ผู้ใช้', 'users']);
     if (!sheet || sheet.getLastRow() < 2) return [];
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
@@ -425,7 +449,7 @@ function getUsersData() {
 
 function saveUser(data) {
     try {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSS();
         let sheet = getSheet(ss, ['ผู้ใช้', 'users']);
         if (!sheet) sheet = ss.insertSheet('ผู้ใช้');
         ensureHeader(sheet, ['Role', 'Password', 'IsEnabled']);
@@ -444,6 +468,64 @@ function saveUser(data) {
         } else {
             sheet.appendRow([data.role, data.password, data.isEnabled]);
         }
+        return { status: 'success' };
+    } catch (e) { throw new Error(e.message); }
+}
+
+// --- CRUD: Book Bank ---
+function getBookBankData(limit = 0) {
+    const ss = getSS();
+    const sheet = getSheet(ss, ['สมุดบัญชี', 'bookbank']);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+
+    const lastRow = sheet.getLastRow();
+    let numRows = lastRow - 1;
+    let startRow = 2;
+
+    if (limit > 0) {
+        numRows = Math.min(limit, lastRow - 1);
+        startRow = lastRow - numRows + 1;
+    }
+
+    const data = sheet.getRange(startRow, 1, numRows, 6).getValues();
+
+    return data.map((row, index) => ({
+        rowIndex: startRow + index,
+        date: row[0] instanceof Date ? row[0].toISOString().split('T')[0] : row[0],
+        account: String(row[1]),
+        type: String(row[2]),
+        amount: Number(row[3]),
+        note: String(row[4])
+    })).reverse();
+}
+
+function saveBookBankMovement(data) {
+    try {
+        const ss = getSS();
+        let sheet = getSheet(ss, ['สมุดบัญชี', 'bookbank']);
+        if (!sheet) sheet = ss.insertSheet('สมุดบัญชี');
+        ensureHeader(sheet, ['วันที่', 'บัญชี', 'ประเภทรายการ', 'จำนวนเงิน', 'หมายเหตุ', 'Timestamp']);
+
+        if (data.rowIndex) {
+            const row = parseInt(data.rowIndex);
+            sheet.getRange(row, 1, 1, 5).setValues([[
+                data.date, data.account, data.type, data.amount, data.note
+            ]]);
+            sheet.getRange(row, 6).setValue(new Date());
+        } else {
+            sheet.appendRow([
+                data.date, data.account, data.type, data.amount, data.note, new Date()
+            ]);
+        }
+        return { status: 'success' };
+    } catch (e) { throw new Error(e.message); }
+}
+
+function deleteBookBankMovement(rowIndex) {
+    try {
+        const ss = getSS();
+        const sheet = getSheet(ss, ['สมุดบัญชี', 'bookbank']);
+        sheet.deleteRow(parseInt(rowIndex));
         return { status: 'success' };
     } catch (e) { throw new Error(e.message); }
 }

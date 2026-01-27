@@ -88,63 +88,51 @@ export const UserManagement = () => {
 
     return (
         <div className="space-y-6 animate-fade-in-up">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
-                <div className="p-3 bg-slate-800 rounded-xl shadow-lg shadow-slate-200 text-white">
-                    <Users size={24} />
-                </div>
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800">ตั้งค่าสิทธิ์การใช้งาน</h2>
-                    <p className="text-sm text-slate-500">จัดการรหัสผ่านผู้ดูแลระบบและเจ้าหน้าที่</p>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-100">
-                            <tr>
-                                <th className="p-6 text-left text-sm font-bold text-slate-600">ประเภทผู้ใช้</th>
-                                <th className="p-6 text-left text-sm font-bold text-slate-600">สถานะ</th>
-                                <th className="p-6 text-left text-sm font-bold text-slate-600">จัดการรหัสผ่าน</th>
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead className="bg-slate-50 border-b border-slate-100">
+                        <tr>
+                            <th className="p-6 text-left text-sm font-bold text-slate-600">ประเภทผู้ใช้</th>
+                            <th className="p-6 text-left text-sm font-bold text-slate-600">สถานะ</th>
+                            <th className="p-6 text-left text-sm font-bold text-slate-600">จัดการรหัสผ่าน</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {users.map(user => (
+                            <tr key={user.role} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="p-6">
+                                    <div className="flex items-center space-x-3">
+                                        {getRoleIcon(user.role)}
+                                        <span className="font-bold text-slate-700 text-lg">{getRoleName(user.role)}</span>
+                                    </div>
+                                </td>
+                                <td className="p-6">
+                                    <button
+                                        onClick={() => handleToggleStatus(user)}
+                                        className={clsx(
+                                            "flex items-center space-x-2 px-4 py-2 rounded-full font-bold text-sm transition-all duration-300",
+                                            user.isEnabled
+                                                ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                                : "bg-red-100 text-red-700 hover:bg-red-200"
+                                        )}
+                                    >
+                                        {user.isEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                                        <span>{user.isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</span>
+                                    </button>
+                                </td>
+                                <td className="p-6">
+                                    <button
+                                        onClick={() => handleChangePassword(user)}
+                                        className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 font-bold text-sm transition-all"
+                                    >
+                                        <Lock size={16} />
+                                        <span>แก้ไขรหัสผ่าน ({user.isEnabled ? 'เปิดใช้งาน' : 'ปิด'})</span>
+                                    </button>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {users.map(user => (
-                                <tr key={user.role} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="p-6">
-                                        <div className="flex items-center space-x-3">
-                                            {getRoleIcon(user.role)}
-                                            <span className="font-bold text-slate-700 text-lg">{getRoleName(user.role)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-6">
-                                        <button
-                                            onClick={() => handleToggleStatus(user)}
-                                            className={clsx(
-                                                "flex items-center space-x-2 px-4 py-2 rounded-full font-bold text-sm transition-all duration-300",
-                                                user.isEnabled
-                                                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                                    : "bg-red-100 text-red-700 hover:bg-red-200"
-                                            )}
-                                        >
-                                            {user.isEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                                            <span>{user.isEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}</span>
-                                        </button>
-                                    </td>
-                                    <td className="p-6">
-                                        <button
-                                            onClick={() => handleChangePassword(user)}
-                                            className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 font-bold text-sm transition-all"
-                                        >
-                                            <Lock size={16} />
-                                            <span>แก้ไขรหัสผ่าน ({user.isEnabled ? 'เปิดใช้งาน' : 'ปิด'})</span>
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
