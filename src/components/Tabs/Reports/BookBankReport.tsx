@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import type { BookBankMovement, Expense, Income } from '../../../types';
-import { Landmark, ArrowUpCircle, ArrowDownCircle, Wallet, Printer } from 'lucide-react';
+import { Landmark, ArrowUpCircle, ArrowDownCircle, Printer } from 'lucide-react';
 import clsx from 'clsx';
 import html2canvas from 'html2canvas';
 
