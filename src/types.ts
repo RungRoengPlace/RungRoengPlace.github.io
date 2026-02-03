@@ -47,6 +47,16 @@ export interface BookBankMovement {
   note: string;
 }
 
+export interface GuardTimeRecord {
+  rowIndex?: number;
+  timestamp: string;
+  guardName: string;
+  eventType: string; // 'เข้างาน' | 'พักเที่ยง' | 'เลิกงาน'
+  geo: string;
+  distance: number;
+  status: string;
+}
+
 export interface DropdownData {
   incomeTypes: string[];
   expenseTypes: string[];

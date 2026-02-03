@@ -78,7 +78,9 @@ export const BookBankReport: React.FC<BookBankReportProps> = ({ year, setYear, m
 
         const reportDiv = reportRef.current;
         const movementsList = reportDiv.querySelector('#movements-list') as HTMLElement;
-        let originalDisplay = '';
+        const printBtn = reportDiv.querySelector('#print-btn') as HTMLElement;
+        let originalDisplayList = '';
+        let originalDisplayBtn = '';
 
         // Add Timestamp overlay
         const timestampDiv = document.createElement('div');
@@ -97,14 +99,24 @@ export const BookBankReport: React.FC<BookBankReportProps> = ({ year, setYear, m
         reportDiv.appendChild(timestampDiv);
 
         if (movementsList) {
-            originalDisplay = movementsList.style.display;
+            originalDisplayList = movementsList.style.display;
             movementsList.style.display = 'none';
         }
+
+        if (printBtn) {
+            originalDisplayBtn = printBtn.style.display;
+            printBtn.style.display = 'none';
+        }
+
+        // Force Desktop Width
+        const originalMinWidth = reportDiv.style.minWidth;
+        reportDiv.style.minWidth = '1200px';
 
         try {
             const canvas = await html2canvas(reportDiv, {
                 scale: 2,
-                backgroundColor: '#f8fafc',
+                backgroundColor: '#ffffff', // Ensure white bg
+                windowWidth: 1400 // Simulate desktop window
             });
 
             const image = canvas.toDataURL("image/png");
@@ -116,8 +128,12 @@ export const BookBankReport: React.FC<BookBankReportProps> = ({ year, setYear, m
             console.error('Print failed', error);
         } finally {
             reportDiv.removeChild(timestampDiv);
+            reportDiv.style.minWidth = originalMinWidth; // Restore width
             if (movementsList) {
-                movementsList.style.display = originalDisplay;
+                movementsList.style.display = originalDisplayList;
+            }
+            if (printBtn) {
+                printBtn.style.display = originalDisplayBtn;
             }
         }
     };
@@ -125,21 +141,21 @@ export const BookBankReport: React.FC<BookBankReportProps> = ({ year, setYear, m
     return (
         <div className="space-y-6">
 
-            {/* Header Action Bar */}
-            <div className="flex justify-end">
-                <button
-                    onClick={handlePrint}
-                    className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm font-bold text-sm"
-                >
-                    <Printer size={16} />
-                    <span>พิมพ์รายงาน</span>
-                </button>
-            </div>
-
             <div ref={reportRef} className="space-y-6 p-4 bg-slate-50 rounded-2xl">
                 {/* Total Balance Hero Section */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
+
+                    {/* Print Button (moved here) */}
+                    <button
+                        id="print-btn"
+                        onClick={handlePrint}
+                        className="absolute top-4 right-4 z-20 flex items-center space-x-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white border border-white/40 rounded-lg transition-all shadow-sm font-bold text-xs backdrop-blur-md"
+                    >
+                        <Printer size={14} />
+                        <span>พิมพ์รายงาน</span>
+                    </button>
+
+                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                         <Landmark size={150} />
                     </div>
                     <div className="relative z-10">

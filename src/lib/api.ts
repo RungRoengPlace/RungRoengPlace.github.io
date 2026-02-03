@@ -1,4 +1,4 @@
-import type { Income, Expense, Member, DropdownData, SecurityRecord, User, BookBankMovement } from '../types';
+import type { Income, Expense, Member, DropdownData, SecurityRecord, User, BookBankMovement, GuardTimeRecord } from '../types';
 
 import dataIncomes from '../data/incomes.json';
 import dataExpenses from '../data/expenses.json';
@@ -208,6 +208,35 @@ export const api = {
         return { status: 'success' };
     },
 
+    getGuardTimeRecords: async (limit: number = 0): Promise<GuardTimeRecord[]> => {
+        if (USE_REAL_API && !isGuestMode) return await fetchGet('getGuardTimeRecords', limit > 0 ? `&limit=${limit}` : '');
+        await delay(600);
+        // Mock Data for Guard
+        const mock: GuardTimeRecord[] = [];
+        // Generate some consistent mock data for testing
+        const guards = ['นาย ก.', 'นาย ข.'];
+        const dates = ['2024-05-01', '2024-05-02', '2024-05-03', '2024-05-04'];
+        let idx = 0;
+
+        dates.forEach(d => {
+            guards.forEach(g => {
+                // Morning In
+                mock.push({ rowIndex: idx++, timestamp: `${d}T06:20:00.000Z`, guardName: g, eventType: 'เข้างาน', geo: '13.1,100.1', distance: 10, status: 'อยู่ในพื้นที่' });
+                // Lunch Out
+                mock.push({ rowIndex: idx++, timestamp: `${d}T12:00:00.000Z`, guardName: g, eventType: 'พักเที่ยง', geo: '13.1,100.1', distance: 10, status: 'อยู่ในพื้นที่' });
+                // Lunch In
+                mock.push({ rowIndex: idx++, timestamp: `${d}T13:00:00.000Z`, guardName: g, eventType: 'เข้างาน', geo: '13.1,100.1', distance: 10, status: 'อยู่ในพื้นที่' });
+                // Evening Out
+                mock.push({ rowIndex: idx++, timestamp: `${d}T18:30:00.000Z`, guardName: g, eventType: 'เลิกงาน', geo: '13.1,100.1', distance: 10, status: 'อยู่ในพื้นที่' });
+            });
+        });
+
+        // Add a late record for testing
+        mock.push({ rowIndex: idx++, timestamp: '2024-05-05T07:15:00.000Z', guardName: 'นาย ก.', eventType: 'เข้างาน', geo: '13.1,100.1', distance: 10, status: 'อยู่ในพื้นที่' });
+
+        return limit > 0 ? mock.slice(0, limit) : mock;
+    },
+
     verifyPassword: async (role: string, pass: string) => {
         if (USE_REAL_API && !isGuestMode) {
             const res = await fetchGet('verifyPassword', `&role=${role}&pass=${pass}`);
@@ -227,10 +256,48 @@ export const api = {
 };
 
 // --- HELPER FOR REAL API ---
+function normalizeThaiDate(val: any): string {
+    if (!val) return '';
+    if (typeof val === 'string') {
+        // Try to verify if it's already ISO (simple check: contains 'T')
+        if (val.includes('T')) return val;
+
+        // Match "30-01-2569 15:44 น." or "DD-MM-YYYY HH:mm"
+        const match = val.match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{1,2})/);
+        if (match) {
+            const d = parseInt(match[1]);
+            const m = parseInt(match[2]) - 1;
+            let y = parseInt(match[3]);
+
+            // If year is in Buddhist Era range (e.g., > 2400), convert to AD
+            if (y > 2400) {
+                y -= 543;
+            }
+
+            const hr = parseInt(match[4]);
+            const min = parseInt(match[5]);
+            const date = new Date(y, m, d, hr, min);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString();
+            }
+        }
+    }
+    return String(val);
+}
+
 async function fetchGet(action: string, params: string = '') {
     const url = `${GOOGLE_SCRIPT_URL}?action=${action}${params}`;
     const response = await fetch(url);
-    return await response.json();
+    const json = await response.json();
+
+    // Auto-normalize guard records if present
+    if (action === 'getGuardTimeRecords' && Array.isArray(json)) {
+        return json.map((r: any) => ({
+            ...r,
+            timestamp: normalizeThaiDate(r.timestamp)
+        }));
+    }
+    return json;
 }
 
 async function fetchPost(action: string, payload: any) {

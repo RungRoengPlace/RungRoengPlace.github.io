@@ -2,6 +2,7 @@
 // This turns your script into a JSON API for the React App
 
 const SPREADSHEET_ID = '1NxPw9CGZOmK40yEaQbRMMAs8FYgaD-U-h2rVsWuKuUg';
+const GUARD_SPREADSHEET_ID = '1nn5BPclLTINgCY-Vxo2ibMQVxvbotggbpPk7kiHLPrQ';
 
 function getSS() {
     // Attempt to get active spreadsheet (if bound)
@@ -37,6 +38,10 @@ function doGet(e) {
         else if (action === 'getBookBankMovements') {
             const limit = e.parameter.limit ? parseInt(e.parameter.limit) : 0;
             result = getBookBankData(limit);
+        }
+        else if (action === 'getGuardTimeRecords') {
+            const limit = e.parameter.limit ? parseInt(e.parameter.limit) : 0;
+            result = getGuardTimeRecords(limit);
         }
         else if (action === 'verifyPassword') {
             const role = e.parameter.role;
@@ -528,4 +533,64 @@ function deleteBookBankMovement(rowIndex) {
         sheet.deleteRow(parseInt(rowIndex));
         return { status: 'success' };
     } catch (e) { throw new Error(e.message); }
+}
+
+// --- GUARD PAYROLL ---
+function getGuardTimeRecords(limit = 0) {
+    try {
+        // Open the specific Guard Spreadsheet
+        const ss = SpreadsheetApp.openById(GUARD_SPREADSHEET_ID);
+        const sheet = ss.getSheetByName('time_stamp');
+        if (!sheet || sheet.getLastRow() < 2) return [];
+
+        const lastRow = sheet.getLastRow();
+        // Columns A:F -> 1:6
+        // A=Timestamp, B=Name, C=Event, D=Geo, E=Dist, F=Status
+
+        let numRows = lastRow - 1;
+        let startRow = 2;
+
+        if (limit > 0) {
+            numRows = Math.min(limit, lastRow - 1);
+            startRow = lastRow - numRows + 1;
+        }
+
+        const data = sheet.getRange(startRow, 1, numRows, 6).getValues();
+
+        return data.map((row, index) => ({
+            rowIndex: startRow + index,
+            timestamp: normalizeThaiDate(row[0]), // Modified to use helper
+            guardName: String(row[1]), // B
+            eventType: String(row[2]), // C
+            geo: String(row[3]), // D
+            distance: Number(row[4]), // E
+            status: String(row[5]) // F
+        })).reverse();
+
+    } catch (e) {
+        return { error: 'Failed to fetch guard records: ' + e.message };
+    }
+}
+
+function normalizeThaiDate(val) {
+    if (val instanceof Date) return val.toISOString();
+    if (typeof val === 'string') {
+        // Match "30-01-2569 15:44 น." or similar "DD-MM-YYYY HH:mm"
+        const match = val.match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{1,2})/);
+        if (match) {
+            const d = parseInt(match[1]);
+            const m = parseInt(match[2]) - 1;
+            let y = parseInt(match[3]);
+
+            // If year is > 2400, assume Thai BE and convert to AD
+            if (y > 2400) {
+                y -= 543;
+            }
+
+            const hr = parseInt(match[4]);
+            const min = parseInt(match[5]);
+            return new Date(y, m, d, hr, min).toISOString();
+        }
+    }
+    return val;
 }
