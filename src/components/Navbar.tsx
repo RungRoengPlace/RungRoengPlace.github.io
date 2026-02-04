@@ -1,6 +1,7 @@
 import React from 'react';
 import type { UserRole } from '../types';
 import { LogOut, User } from 'lucide-react';
+import { GuardStatusIndicator } from './GuardStatusIndicator';
 
 interface NavbarProps {
     role: UserRole;
@@ -25,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({ role, onLogout }) => {
                     </div>
 
                     <div className="flex items-center space-x-4">
+                        <GuardStatusIndicator />
                         <div className="hidden md:flex items-center px-4 py-1.5 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
                             <User size={14} className="mr-2 text-teal-300" />
                             <span className="text-sm font-medium">

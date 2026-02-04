@@ -150,7 +150,9 @@ export function calculatePayroll(
                 if (!checkOutRecord && dailyRecords.length > 0) {
                     // Fallback: Use the latest record if it's after noon
                     const last = dailyRecords[dailyRecords.length - 1];
-                    if (getThaiHour(last.timestamp) >= 12) {
+                    // Ensure we don't treat a Check-In record as Check-Out
+                    const isCheckIn = last.eventType.includes('เข้า') || last.eventType.includes('Check-in');
+                    if (getThaiHour(last.timestamp) >= 12 && !isCheckIn) {
                         checkOutRecord = last;
                     }
                 }
