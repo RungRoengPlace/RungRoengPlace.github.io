@@ -169,18 +169,18 @@ export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear,
 
     return (
         <div className="space-y-6 animate-fade-in-up">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
-                <div className="flex items-center space-x-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-blue-50 to-white space-y-4 md:space-y-0">
+                <div className="flex items-center space-x-4 w-full md:w-auto">
                     <div className="p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-200 text-white">
                         <i className="fa-solid fa-list-check text-xl"></i>
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">รายงานค่าส่วนกลาง</h2>
-                        <p className="text-sm text-blue-600">สรุปสถานะการจ่ายรายเดือน</p>
+                        <p className="text-sm text-blue-600 hidden md:block">สรุปสถานะการจ่ายรายเดือน</p>
                     </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
                     <button
                         onClick={handlePrint}
                         className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm font-bold text-sm"
@@ -189,19 +189,20 @@ export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear,
                         <span>พิมพ์รายงาน</span>
                     </button>
 
-                    <div className="h-8 w-px bg-slate-200 mx-2"></div>
-
-                    <span className="text-sm font-bold text-slate-500">เลือกปี:</span>
-                    <select
-                        value={year}
-                        onChange={(e) => setYear(Number(e.target.value))}
-                        className="border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none text-blue-800 font-bold"
-                    >
-                        {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => {
-                            const y = new Date().getFullYear() - i;
-                            return <option key={y} value={y}>ปี {y + 543} ({y})</option>;
-                        })}
-                    </select>
+                    <div className="flex items-center space-x-2">
+                        <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
+                        <span className="text-sm font-bold text-slate-500 whitespace-nowrap">เลือกปี:</span>
+                        <select
+                            value={year}
+                            onChange={(e) => setYear(Number(e.target.value))}
+                            className="border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 outline-none text-blue-800 font-bold"
+                        >
+                            {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => {
+                                const y = new Date().getFullYear() - i;
+                                return <option key={y} value={y}>ปี {y + 543} ({y})</option>;
+                            })}
+                        </select>
+                    </div>
                 </div>
             </div>
 

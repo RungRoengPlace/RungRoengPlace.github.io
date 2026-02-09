@@ -48,12 +48,16 @@ export const GuardStatusIndicator: React.FC = () => {
             // Fetch records, using 500 to match main component behavior
             const records = await api.getGuardTimeRecords(500);
 
-            const todayStr = now.toISOString().split('T')[0];
-
-            // Note: api.ts normalizeThaiDate returns ISO strings
+            // Filter for records that happened TODAY (Local Time) to avoid UTC/Timezone issues
             const todayRecords = records.filter(r => {
                 if (!r.timestamp || r.guardName === 'ทดสอบ') return false;
-                return r.timestamp.startsWith(todayStr);
+
+                const rDate = new Date(r.timestamp);
+                return (
+                    rDate.getDate() === now.getDate() &&
+                    rDate.getMonth() === now.getMonth() &&
+                    rDate.getFullYear() === now.getFullYear()
+                );
             });
 
             if (todayRecords.length === 0) {
@@ -95,8 +99,8 @@ export const GuardStatusIndicator: React.FC = () => {
     }[status];
 
     return (
-        <div className="hidden md:flex items-center space-x-2 mr-4 px-4 py-1.5 rounded-full bg-slate-800/50 border border-slate-600/50 backdrop-blur-sm">
-            <span className="text-sm text-slate-300 font-normal">สถานะ รปภ :</span>
+        <div className="flex items-center space-x-2 mr-2 md:mr-4 px-3 md:px-4 py-1.5 rounded-full bg-slate-800/50 border border-slate-600/50 backdrop-blur-sm">
+            <span className="text-sm text-slate-300 font-normal">รปภ :</span>
             <span className={`flex h-3 w-3 rounded-full ${config.color} shadow-[0_0_8px_rgba(0,0,0,0.5)] animate-pulse`}></span>
             <span className="text-sm text-white/90 font-medium tracking-wide">
                 {config.text}

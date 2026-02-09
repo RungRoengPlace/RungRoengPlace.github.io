@@ -17,7 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({ role, onLogout }) => {
                         <div className="bg-white/10 p-2 rounded-full backdrop-blur-sm">
                             <img src="/Mini_Logo_remove_bg.png" alt="Logo" className="w-10 h-10 object-contain" />
                         </div>
-                        <div className="flex flex-col">
+                        <div className="hidden md:flex flex-col">
                             <span className="font-bold text-lg md:text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-teal-200">
                                 หมู่บ้านรุ่งเรืองเพลส
                             </span>
@@ -27,7 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ role, onLogout }) => {
 
                     <div className="flex items-center space-x-4">
                         <GuardStatusIndicator />
-                        <div className="hidden md:flex items-center px-4 py-1.5 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
+                        <div className="flex items-center px-3 md:px-4 py-1.5 bg-white/10 rounded-full backdrop-blur-sm border border-white/20">
                             <User size={14} className="mr-2 text-teal-300" />
                             <span className="text-sm font-medium">
                                 {

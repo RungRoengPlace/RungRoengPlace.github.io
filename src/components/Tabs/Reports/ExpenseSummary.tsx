@@ -193,18 +193,18 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
     return (
         <div className="space-y-6 animate-fade-in-up">
             {/* Header */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-white">
-                <div className="flex items-center space-x-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-purple-50 to-white space-y-4 md:space-y-0">
+                <div className="flex items-center space-x-4 w-full md:w-auto">
                     <div className="p-3 bg-purple-600 rounded-xl shadow-lg shadow-purple-200 text-white">
                         <PieChart size={24} />
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">สรุปรายจ่ายภาพรวม</h2>
-                        <p className="text-sm text-purple-600">Cross-tab สรุปรายจ่ายแต่ละประเภท</p>
+                        <p className="text-sm text-purple-600 hidden md:block">Cross-tab สรุปรายจ่ายแต่ละประเภท</p>
                     </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
                     <button
                         onClick={handlePrint}
                         className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-purple-600 transition-colors shadow-sm font-bold text-sm"
@@ -212,19 +212,22 @@ export const ExpenseSummary: React.FC<ExpenseSummaryProps> = ({ year, setYear, e
                         <Printer size={16} />
                         <span>พิมพ์รายงาน</span>
                     </button>
-                    <div className="h-8 w-px bg-slate-200 mx-2"></div>
-                    <span className="text-sm font-bold text-slate-500">เลือกปี:</span>
-                    <select
-                        value={year}
-                        onChange={(e) => setYear(Number(e.target.value))}
-                        className="border border-purple-200 rounded-lg p-2 bg-white focus:ring-2 focus:ring-purple-500 outline-none text-purple-800 font-bold"
-                    >
-                        {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => {
-                            const currentYear = new Date().getFullYear();
-                            const y = currentYear - i;
-                            return <option key={y} value={y}>ปี {y + 543} ({y})</option>;
-                        })}
-                    </select>
+
+                    <div className="flex items-center space-x-2">
+                        <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
+                        <span className="text-sm font-bold text-slate-500 whitespace-nowrap">เลือกปี:</span>
+                        <select
+                            value={year}
+                            onChange={(e) => setYear(Number(e.target.value))}
+                            className="border border-purple-200 rounded-lg p-2 bg-white focus:ring-2 focus:ring-purple-500 outline-none text-purple-800 font-bold"
+                        >
+                            {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => {
+                                const currentYear = new Date().getFullYear();
+                                const y = currentYear - i;
+                                return <option key={y} value={y}>ปี {y + 543} ({y})</option>;
+                            })}
+                        </select>
+                    </div>
                 </div>
             </div>
 
