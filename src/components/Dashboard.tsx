@@ -51,7 +51,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ role, onLogout }) => {
     const canViewGuardPayroll = role === 'admin' || role === 'treasurer';
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-200 flex flex-col font-sans">
             <Navbar role={role} onLogout={onLogout} />
 
             <main className="flex-grow container mx-auto px-2 sm:px-4 py-8 max-w-7xl animate-fade-in-up">

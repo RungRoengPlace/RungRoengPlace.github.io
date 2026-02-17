@@ -252,6 +252,26 @@ export const api = {
         if (String(user.password) === String(pass)) return { valid: true };
 
         return { valid: false, message: 'รหัสผ่านไม่ถูกต้อง' };
+    },
+
+    changePassword: async (role: string, newPass: string) => {
+        try {
+            const users = await api.getUsers();
+            const user = users.find(u => u.role === role);
+            if (user) {
+                // Keep existing fields, only update password and timestamp
+                const updatedUser: User = {
+                    ...user,
+                    password: newPass,
+                    updated: new Date().toLocaleString('th-TH')
+                };
+                return await api.saveUser(updatedUser);
+            }
+            return { status: 'error', message: 'User not found' };
+        } catch (error) {
+            console.error("Change password error:", error);
+            return { status: 'error', message: 'Failed to update password' };
+        }
     }
 };
 

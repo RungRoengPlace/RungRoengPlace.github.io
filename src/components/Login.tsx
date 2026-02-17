@@ -106,7 +106,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     ];
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 px-4 py-8 font-sans">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-200 px-4 py-8 font-sans">
             <div className="max-w-6xl w-full text-center animate-fade-in-up">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-slate-800 mb-4 tracking-tight">
                     ยินดีต้อนรับสู่ระบบ
