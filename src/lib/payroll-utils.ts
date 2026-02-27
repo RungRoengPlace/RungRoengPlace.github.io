@@ -84,9 +84,17 @@ export function calculatePayroll(
 
         const cur = new Date(startDate);
         const end = new Date(endDate);
+        const today = new Date(); // Local date is fine to compare because we only use the date string
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
         while (cur <= end) {
             const dateStr = cur.toISOString().split("T")[0];
+
+            // Stop calculating if the date is in the future
+            if (dateStr > todayStr) {
+                break;
+            }
+
             const dayOfWeek = cur.getDay(); // 0=Sun, 6=Sat
 
             // Spec: Working days: Monday to Saturday. Sunday is Off.
@@ -103,7 +111,7 @@ export function calculatePayroll(
                     note = 'วันหยุด';
                     isAbsent = false; // Not considered absent for penalty
                 } else { // If it's Mon-Sat
-                    note = 'ขาดงาน';
+                    note = 'ขาด/ลา';
                     isAbsent = true;
                 }
 
@@ -182,7 +190,10 @@ export function calculatePayroll(
 
                     if (actualMins > startMins) {
                         lateMinutes = actualMins - startMins;
-                        if (lateMinutes > LATE_PENALTY_THRESHOLD_2) {
+                        if (lateMinutes >= 60) {
+                            isLate = true;
+                            deduction = Math.round(lateMinutes / 60) * HOURLY_RATE;
+                        } else if (lateMinutes > LATE_PENALTY_THRESHOLD_2) {
                             isLate = true;
                             deduction = HOURLY_RATE * 1;
                         } else if (lateMinutes > LATE_PENALTY_THRESHOLD_1) {
@@ -194,6 +205,15 @@ export function calculatePayroll(
                 }
 
                 const dailyWage = DAILY_WAGE;
+
+                let curNote = '';
+                if (!isWorkDay) {
+                    curNote = 'มาทำงานในวันหยุด';
+                }
+
+                if (deduction >= DAILY_WAGE / 2) {
+                    curNote = curNote ? `${curNote}, ขาด/ลา` : 'ขาด/ลา';
+                }
 
                 details.push({
                     date: dateStr,
@@ -207,10 +227,13 @@ export function calculatePayroll(
                     wage: dailyWage,
                     deduction,
                     netWage: dailyWage - deduction,
-                    note: ''
+                    note: curNote
                 });
 
                 if (isLate) totalLateDays++;
+                if (deduction >= DAILY_WAGE / 2) {
+                    totalAbsentDays += 0.5;
+                }
                 totalWage += dailyWage;
                 totalDeduction += deduction;
             }
@@ -222,7 +245,7 @@ export function calculatePayroll(
 
         summaries.push({
             guardName,
-            totalDays: details.filter(d => !d.isAbsent).length,
+            totalDays: details.reduce((sum, d) => sum + (d.isAbsent ? 0 : (d.deduction >= DAILY_WAGE / 2 ? 0.5 : 1)), 0),
             totalLateDays,
             totalAbsentDays,
             totalWage,

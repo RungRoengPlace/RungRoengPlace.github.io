@@ -272,6 +272,16 @@ export const api = {
             console.error("Change password error:", error);
             return { status: 'error', message: 'Failed to update password' };
         }
+    },
+
+    sendPayrollToTelegram: async (base64Image: string, caption: string, filename: string) => {
+        if (USE_REAL_API && !isGuestMode) {
+            return await fetchPost('sendToTelegram', { base64Image, caption, filename });
+        }
+        await delay(1500); // Simulate network
+        // Mock success
+        console.log("MOCK: Sent image to Telegram", { caption, filename, imageLength: base64Image.length });
+        return { status: 'success' };
     }
 };
 

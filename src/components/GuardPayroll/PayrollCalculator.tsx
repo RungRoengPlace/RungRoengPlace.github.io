@@ -3,6 +3,7 @@ import { api } from '../../lib/api';
 import { calculatePayroll, type PayrollSummary } from '../../lib/payroll-utils';
 import type { GuardTimeRecord } from '../../types';
 import html2canvas from 'html2canvas';
+import Swal from 'sweetalert2';
 
 interface PayrollCalculatorProps {
     filterMonth: string;
@@ -13,6 +14,7 @@ interface PayrollCalculatorProps {
 
 export interface PayrollCalculatorRef {
     print: () => void;
+    sendToTelegram: () => void;
 }
 
 export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalculatorProps>(({
@@ -153,8 +155,91 @@ export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalcula
         }
     };
 
+    const handleSendToTelegram = async () => {
+        if (!reportRef.current) return;
+
+        Swal.fire({
+            title: 'กำลังเตรียมส่งข้อมูล...',
+            text: 'กรุณารอสักครู่ ระบบกำลังสร้างรูปภาพสรุปยอด',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const reportDiv = reportRef.current;
+        let originalMinWidth = '';
+
+        originalMinWidth = reportDiv.style.minWidth;
+        reportDiv.style.minWidth = '1200px';
+
+        const [y, m] = filterMonth.split('-').map(Number);
+        const dateObj = new Date(y, m - 1);
+        const thaiMonth = dateObj.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
+        let periodText = 'ทั้งเดือน';
+        if (filterPeriod === '1') periodText = 'งวดที่ 1 (1-15)';
+        if (filterPeriod === '2') periodText = 'งวดที่ 2 (16-สิ้นเดือน)';
+
+        const headerDiv = document.createElement('div');
+        headerDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                <div>
+                    <h2 style="font-size: 24px; font-weight: bold; color: #1e293b; margin: 0;">รายงานสรุปค่าจ้าง รปภ.</h2>
+                    <p style="font-size: 16px; color: #64748b; margin: 5px 0 0 0;">ประจำเดือน: <span style="color: #0f172a; font-weight: 600;">${thaiMonth}</span> | งวด: <span style="color: #0f172a; font-weight: 600;">${periodText}</span></p>
+                </div>
+                <div style="text-align: right;">
+                     <p style="font-size: 12px; color: #94a3b8; margin: 0;">วันที่พิมพ์รายงาน</p>
+                     <p style="font-size: 14px; font-weight: 600; color: #475569; margin: 0;">${new Date().toLocaleString('th-TH')}</p>
+                </div>
+            </div>
+        `;
+
+        reportDiv.insertBefore(headerDiv, reportDiv.firstChild);
+
+        try {
+            const canvas = await html2canvas(reportDiv, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                windowWidth: 1400
+            });
+
+            const image = canvas.toDataURL("image/png");
+
+            // Call API
+            const filename = `payroll-report-${filterMonth}-${filterPeriod}.png`;
+            const caption = `สรุปรายงานค่าจ้าง รปภ. ประจำเดือน: ${thaiMonth} งวด: ${periodText}`;
+
+            const res = await api.sendPayrollToTelegram(image, caption, filename);
+
+            if (res.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ส่งสรุปเรียบร้อย!',
+                    text: 'ข้อมูลถูกส่งเข้ากลุ่ม Telegram แล้ว',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                throw new Error(res.error || 'Failed to send to Telegram');
+            }
+
+        } catch (error: any) {
+            console.error('Telegram Send failed', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถส่งข้อมูลไปที่ Telegram ได้: ' + (error.message || 'Unknown error')
+            });
+        } finally {
+            if (headerDiv.parentNode === reportDiv) {
+                reportDiv.removeChild(headerDiv);
+            }
+            reportDiv.style.minWidth = originalMinWidth;
+        }
+    };
+
     useImperativeHandle(ref, () => ({
-        print: handlePrint
+        print: handlePrint,
+        sendToTelegram: handleSendToTelegram
     }));
 
     return (
@@ -178,7 +263,7 @@ export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalcula
                             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">{guard.guardName}</h3>
-                                    <p className="text-sm text-gray-500">รวมทำงาน {guard.totalDays} วัน | สาย {guard.totalLateDays} วัน | ขาด {guard.totalAbsentDays} วัน</p>
+                                    <p className="text-sm text-gray-500">รวมทำงาน {guard.totalDays} วัน | สาย {guard.totalLateDays} วัน | ขาด/ลา {guard.totalAbsentDays} วัน</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs text-gray-500 uppercase">รายรับสุทธิ</p>
@@ -192,7 +277,7 @@ export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalcula
                                     <p className="text-lg font-semibold text-gray-900">{formatCurrency(guard.totalWage)}</p>
                                 </div>
                                 <div className="bg-red-50 p-4 rounded-lg">
-                                    <p className="text-sm text-gray-600">หักสาย/ขาด</p>
+                                    <p className="text-sm text-gray-600">หักสาย/ขาด/ลา</p>
                                     <p className="text-lg font-semibold text-red-600">-{formatCurrency(guard.totalDeduction)}</p>
                                 </div>
                                 <div className="bg-yellow-50 p-4 rounded-lg">
@@ -228,15 +313,15 @@ export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalcula
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {guard.details.filter(d => {
                                                 const now = new Date();
-                                                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                                                const currentMonth = `${now.getFullYear()} -${String(now.getMonth() + 1).padStart(2, '0')} `;
 
                                                 if (filterMonth === currentMonth) {
-                                                    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                                    const todayStr = `${now.getFullYear()} -${String(now.getMonth() + 1).padStart(2, '0')} -${String(now.getDate()).padStart(2, '0')} `;
                                                     return d.date <= todayStr;
                                                 }
                                                 return true;
                                             }).map((d, i) => (
-                                                <tr key={i} className={d.note === 'วันหยุด' ? 'bg-green-50' : d.isAbsent ? 'bg-red-50' : ''}>
+                                                <tr key={i} className={d.note === 'วันหยุด' ? 'bg-green-50' : d.isAbsent ? 'bg-red-50' : d.note === 'มาทำงานในวันหยุด' ? 'bg-blue-50' : ''}>
                                                     <td className="px-4 py-2 text-sm text-gray-900">{d.date}</td>
                                                     <td className="px-4 py-2 text-center text-sm text-gray-500">
                                                         {d.checkIn ? new Date(d.checkIn).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-'}
@@ -244,7 +329,7 @@ export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalcula
                                                     <td className="px-4 py-2 text-center text-sm text-gray-500">
                                                         {d.checkOut ? new Date(d.checkOut).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-'}
                                                     </td>
-                                                    <td className={`px-4 py-2 text-center text-sm ${d.isLate ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                                                    <td className={`px - 4 py - 2 text - center text - sm ${d.isLate ? 'text-red-600 font-bold' : 'text-gray-500'} `}>
                                                         {d.lateMinutes > 0 ? d.lateMinutes : '-'}
                                                     </td>
                                                     <td className="px-4 py-2 text-right text-sm text-gray-900">{d.wage}</td>
@@ -252,7 +337,7 @@ export const PayrollCalculator = forwardRef<PayrollCalculatorRef, PayrollCalcula
                                                     <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">{d.netWage}</td>
                                                     <td className="px-4 py-2 text-left text-sm text-gray-600">
                                                         {d.note && (
-                                                            <span className={d.note === 'ขาดงาน' ? 'text-red-600 font-semibold' : d.note === 'วันหยุด' ? 'text-green-600 font-semibold' : ''}>
+                                                            <span className={d.note.includes('ขาด/ลา') ? 'text-red-600 font-semibold' : d.note === 'วันหยุด' || d.note === 'มาทำงานในวันหยุด' ? 'text-green-600 font-semibold' : ''}>
                                                                 {d.note}
                                                             </span>
                                                         )}

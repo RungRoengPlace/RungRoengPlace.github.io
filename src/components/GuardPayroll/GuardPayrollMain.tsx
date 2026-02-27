@@ -3,7 +3,7 @@ import { TimeRecordTable } from './TimeRecordTable';
 import { PayrollCalculator } from './PayrollCalculator';
 import { api } from '../../lib/api';
 
-import { Printer } from 'lucide-react';
+import { Printer, Send } from 'lucide-react';
 import type { PayrollCalculatorRef } from './PayrollCalculator';
 
 export const GuardPayrollMain: React.FC = () => {
@@ -124,15 +124,28 @@ export const GuardPayrollMain: React.FC = () => {
                     </button>
                 </nav>
 
-                {/* Print Button aligned with Tabs */}
+                {/* Actions aligned with Tabs */}
                 {activeTab === 'PAYROLL' && (
-                    <button
-                        onClick={handlePrint}
-                        className="mb-2 flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm font-bold text-sm"
-                    >
-                        <Printer size={16} />
-                        <span>พิมพ์รายงาน</span>
-                    </button>
+                    <div className="flex items-center space-x-3 mb-2">
+                        <button
+                            onClick={() => {
+                                if (payrollRef.current) {
+                                    payrollRef.current.sendToTelegram();
+                                }
+                            }}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#0088cc] text-white rounded-lg hover:bg-[#0077b3] transition shadow-sm font-bold text-sm"
+                        >
+                            <Send size={16} />
+                            <span>ส่ง Telegram</span>
+                        </button>
+                        <button
+                            onClick={handlePrint}
+                            className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm font-bold text-sm"
+                        >
+                            <Printer size={16} />
+                            <span>พิมพ์รายงาน</span>
+                        </button>
+                    </div>
                 )}
             </div>
 

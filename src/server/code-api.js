@@ -1,8 +1,8 @@
 // --- PASTE THIS INTO YOUR GOOGLE APPS SCRIPT (code.gs) ---
 // This turns your script into a JSON API for the React App
 
-const SPREADSHEET_ID = '1NxPw9CGZOmK40yEaQbRMMAs8FYgaD-U-h2rVsWuKuUg';
-const GUARD_SPREADSHEET_ID = '1nn5BPclLTINgCY-Vxo2ibMQVxvbotggbpPk7kiHLPrQ';
+const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+const GUARD_SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('GUARD_SPREADSHEET_ID');
 
 function getSS() {
     // Attempt to get active spreadsheet (if bound)
@@ -88,6 +88,10 @@ function doPost(e) {
         // Book Bank
         else if (action === 'saveBookBankMovement') result = saveBookBankMovement(payload);
         else if (action === 'deleteBookBankMovement') result = deleteBookBankMovement(payload.rowIndex);
+
+        // Telegram
+        else if (action === 'sendToTelegram') result = sendToTelegram(payload);
+
         else result = { error: 'Unknown action' };
 
         output.setContent(JSON.stringify(result));
@@ -593,4 +597,42 @@ function normalizeThaiDate(val) {
         }
     }
     return val;
+}
+
+function sendToTelegram(payload) {
+    try {
+        // ดึงค่า Token และ Chat ID จาก Script Properties ที่เราซ่อนไว้
+        var scriptProperties = PropertiesService.getScriptProperties();
+        var BOT_TOKEN = scriptProperties.getProperty('TELEGRAM_BOT_TOKEN');
+        var CHAT_ID = scriptProperties.getProperty('TELEGRAM_CHAT_ID');
+
+        if (!BOT_TOKEN || !CHAT_ID) {
+            return { error: 'Please set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Script Properties.' };
+        }
+
+        const base64Str = payload.base64Image;
+        const filename = payload.filename || 'report.png';
+        const caption = payload.caption || 'สรุปรายงานค่าจ้าง';
+
+        // Extract base64 data from Data URL (e.g., 'data:image/png;base64,...')
+        const data = base64Str.split(',')[1] || base64Str;
+        const blob = Utilities.newBlob(Utilities.base64Decode(data), 'image/png', filename);
+
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+        const options = {
+            method: 'post',
+            payload: {
+                chat_id: CHAT_ID,
+                photo: blob,
+                caption: caption
+            }
+        };
+
+        const response = UrlFetchApp.fetch(url, options);
+        const result = JSON.parse(response.getContentText());
+        return { status: 'success', result: result };
+
+    } catch (e) {
+        return { error: 'Failed to send to Telegram: ' + e.message };
+    }
 }
