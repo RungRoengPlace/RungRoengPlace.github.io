@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import type { Member, Income, Expense, BookBankMovement } from '../../types';
+import type { Member, Income, Expense, BookBankMovement, UserRole } from '../../types';
 import { CommonFeeReport } from './Reports/CommonFeeReport';
 import { ExpenseSummary } from './Reports/ExpenseSummary';
 import { BookBankReport } from './Reports/BookBankReport';
 import { PieChart, ListChecks, Landmark } from 'lucide-react';
 import clsx from 'clsx';
 
-export const Reports = () => {
+interface ReportsProps {
+    role?: UserRole;
+}
+
+export const Reports: React.FC<ReportsProps> = ({ role }) => {
     const [year, setYear] = useState(new Date().getFullYear());
     const [loading, setLoading] = useState(true);
     const [members, setMembers] = useState<Member[]>([]);
@@ -102,7 +106,7 @@ export const Reports = () => {
 
             {/* Content Area */}
             <div className="min-h-[500px]">
-                {view === 'fee' && <CommonFeeReport year={year} setYear={setYear} members={members} incomes={incomes} />}
+                {view === 'fee' && <CommonFeeReport year={year} setYear={setYear} members={members} incomes={incomes} role={role} />}
                 {view === 'expense' && <ExpenseSummary year={year} setYear={setYear} expenses={expenses} />}
                 {view === 'bookBank' && <BookBankReport year={year} setYear={setYear} movements={bookMovements} expenses={expenses} incomes={incomes} />}
             </div>

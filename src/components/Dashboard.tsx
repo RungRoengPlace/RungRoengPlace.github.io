@@ -154,7 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ role, onLogout }) => {
                 {/* Dynamic Content */}
                 <div className="space-y-6 min-h-[500px]">
                     <Suspense fallback={<TabLoader />}>
-                        {activeTab === 'reports' && canViewReports && <Reports />}
+                        {activeTab === 'reports' && canViewReports && <Reports role={role} />}
                         {activeTab === 'income' && canEditFinance && <Income />}
                         {activeTab === 'expense' && canEditFinance && <Expense />}
                         {activeTab === 'bookBank' && canManageBookBank && <BookBank />}

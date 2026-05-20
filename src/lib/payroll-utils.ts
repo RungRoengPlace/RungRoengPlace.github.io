@@ -179,39 +179,73 @@ export function calculatePayroll(
                 let isLate = false;
                 let lateMinutes = 0;
                 let deduction = 0;
+                let dailyWage = 0;
+                let actualWorkHours = 0;
+                let payableHoursForNote = 0;
 
                 if (checkInRecord) {
-                    const dt = getThaiDate(checkInRecord.timestamp);
-                    const hours = dt.getUTCHours();
-                    const mins = dt.getUTCMinutes();
+                    checkInTime = checkInRecord.timestamp;
+                    const inDt = getThaiDate(checkInTime);
+                    const inHours = inDt.getUTCHours();
+                    const inMins = inDt.getUTCMinutes();
+                    const actualInMinsTotal = inHours * 60 + inMins;
 
-                    const startMins = 6 * 60 + 30; // 06:30
-                    const actualMins = hours * 60 + mins;
+                    if (checkOutRecord) {
+                        const outDt = getThaiDate(checkOutRecord.timestamp);
+                        actualWorkHours = (outDt.getTime() - inDt.getTime()) / (1000 * 60 * 60);
+                    } else {
+                        actualWorkHours = 12; // Fallback assume full day if no checkout
+                    }
 
-                    if (actualMins > startMins) {
-                        lateMinutes = actualMins - startMins;
-                        if (lateMinutes >= 60) {
+                    // 1. Calculate Base Wage
+                    if (actualWorkHours >= 11) {
+                        dailyWage = 420; // Full day
+                    } else {
+                        const exactHours = Math.floor(actualWorkHours);
+                        const remainingMins = Math.round((actualWorkHours - exactHours) * 60);
+                        let payableHours = exactHours;
+                        if (remainingMins > 15) {
+                            payableHours += 1;
+                        }
+                        payableHoursForNote = payableHours;
+                        dailyWage = payableHours * 35; // Hourly for < 11 hours
+                    }
+
+                    // 2. Calculate Lateness
+                    const expectedInMinsTotal = 6 * 60 + 30; // 06:30
+
+                    if (actualInMinsTotal > expectedInMinsTotal) {
+                        lateMinutes = actualInMinsTotal - expectedInMinsTotal;
+                        if (lateMinutes > 15) {
                             isLate = true;
-                            deduction = Math.round(lateMinutes / 60) * HOURLY_RATE;
-                        } else if (lateMinutes > LATE_PENALTY_THRESHOLD_2) {
-                            isLate = true;
-                            deduction = HOURLY_RATE * 1;
-                        } else if (lateMinutes > LATE_PENALTY_THRESHOLD_1) {
-                            isLate = true;
-                            deduction = HOURLY_RATE * 0.5;
+                            // Only deduct lateness penalty if they are on Full Day track
+                            // Hourly workers already get paid less by hours worked.
+                            if (dailyWage === 420) {
+                                if (lateMinutes <= 30) {
+                                    deduction = 17.5;
+                                } else if (lateMinutes <= 59) {
+                                    deduction = 35;
+                                } else {
+                                    // Round up to nearest hour
+                                    deduction = Math.ceil(lateMinutes / 60) * 35;
+                                }
+                            }
                         }
                     }
-                    checkInTime = checkInRecord.timestamp;
                 }
-
-                const dailyWage = DAILY_WAGE;
 
                 let curNote = '';
                 if (!isWorkDay) {
                     curNote = 'มาทำงานในวันหยุด';
                 }
 
-                if (deduction >= DAILY_WAGE / 2) {
+                if (dailyWage === 210) {
+                    curNote = curNote ? `${curNote}, ทำงานครึ่งวัน` : 'ทำงานครึ่งวัน';
+                } else if (dailyWage > 0 && dailyWage < 420) {
+                    curNote = curNote ? `${curNote}, ทำงานรายชั่วโมง (${payableHoursForNote} ชม.)` : `ทำงานรายชั่วโมง (${payableHoursForNote} ชม.)`;
+                }
+
+                if (deduction >= 210) {
                     curNote = curNote ? `${curNote}, ขาด/ลา` : 'ขาด/ลา';
                 }
 
@@ -223,15 +257,17 @@ export function calculatePayroll(
                     isLate,
                     lateMinutes,
                     isAbsent: false,
-                    totalWorkHours: 12, // Assume full shift if present
-                    wage: dailyWage,
+                    totalWorkHours: actualWorkHours > 0 ? Number(actualWorkHours.toFixed(2)) : 12,
+                    wage: dailyWage > 0 ? Number(dailyWage.toFixed(2)) : 0,
                     deduction,
-                    netWage: dailyWage - deduction,
+                    netWage: Number((dailyWage - deduction).toFixed(2)),
                     note: curNote
                 });
 
                 if (isLate) totalLateDays++;
-                if (deduction >= DAILY_WAGE / 2) {
+                if (dailyWage < 210 || deduction >= 210) {
+                    totalAbsentDays += 1;
+                } else if (dailyWage === 210) {
                     totalAbsentDays += 0.5;
                 }
                 totalWage += dailyWage;
@@ -245,7 +281,14 @@ export function calculatePayroll(
 
         summaries.push({
             guardName,
-            totalDays: details.reduce((sum, d) => sum + (d.isAbsent ? 0 : (d.deduction >= DAILY_WAGE / 2 ? 0.5 : 1)), 0),
+            totalDays: details.reduce((sum, d) => {
+                if (d.isAbsent) return sum;
+                if (d.wage === 0 && d.note === 'วันหยุด') return sum + 1;
+                if (d.wage === 210) return sum + 0.5;
+                if (d.wage < 210 && d.wage > 0) return sum + (d.wage / 420);
+                if (d.deduction >= 210) return sum + 0.5;
+                return sum + 1;
+            }, 0),
             totalLateDays,
             totalAbsentDays,
             totalWage,

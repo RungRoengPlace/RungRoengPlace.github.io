@@ -1,8 +1,10 @@
 import { useRef } from 'react';
-import type { Member, Income } from '../../../types';
+import type { Member, Income, UserRole } from '../../../types';
 import { MONTH_NAMES } from '../../../types';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { CheckCircle2, Printer, Send } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import Swal from 'sweetalert2';
+import { api } from '../../../lib/api';
 
 import clsx from 'clsx';
 
@@ -11,6 +13,7 @@ interface CommonFeeReportProps {
     setYear: (y: number) => void;
     members: Member[];
     incomes: Income[];
+    role?: UserRole;
 }
 
 const SHORT_MONTH_NAMES = [
@@ -18,8 +21,104 @@ const SHORT_MONTH_NAMES = [
     "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
 ];
 
-export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear, members, incomes }) => {
+export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear, members, incomes, role }) => {
     const reportRef = useRef<HTMLDivElement>(null);
+    const canSendTelegram = role === 'admin' || role === 'treasurer';
+
+    const handleSendTelegram = async () => {
+        if (!reportRef.current) return;
+
+        Swal.fire({
+            title: 'กำลังเตรียมส่งข้อมูล...',
+            text: 'กรุณารอสักครู่ ระบบกำลังสร้างรูปภาพรายงาน',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        // Add Timestamp overlay
+        const reportDiv = reportRef.current;
+        const timestampDiv = document.createElement('div');
+        timestampDiv.innerText = `พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`;
+        timestampDiv.style.position = 'absolute';
+        timestampDiv.style.top = '10px';
+        timestampDiv.style.right = '10px';
+        timestampDiv.style.fontSize = '12px';
+        timestampDiv.style.color = '#64748b';
+        timestampDiv.style.fontWeight = 'bold';
+        timestampDiv.style.background = 'rgba(255,255,255,0.8)';
+        timestampDiv.style.padding = '4px 8px';
+        timestampDiv.style.borderRadius = '4px';
+        timestampDiv.style.zIndex = '1000';
+        reportDiv.style.position = 'relative'; // Ensure positioning context
+        reportDiv.appendChild(timestampDiv);
+
+
+        // Expand scrollable areas
+        const scrollableDiv = reportDiv.querySelector('.overflow-auto') as HTMLElement;
+        const printHeader = reportDiv.querySelector('#print-header') as HTMLElement;
+        let originalOverflow = '';
+        let originalMaxHeight = '';
+        let originalDisplay = '';
+
+        if (scrollableDiv) {
+            originalOverflow = scrollableDiv.style.overflow;
+            originalMaxHeight = scrollableDiv.style.maxHeight;
+            scrollableDiv.style.overflow = 'visible';
+            scrollableDiv.style.maxHeight = 'none';
+        }
+
+        if (printHeader) {
+            originalDisplay = printHeader.style.display;
+            printHeader.classList.remove('hidden');
+            printHeader.style.display = 'block';
+        }
+
+        try {
+            const canvas = await html2canvas(reportDiv, {
+                scale: 2, // High resolution
+                backgroundColor: '#f8fafc',
+                ignoreElements: (element) => element.classList.contains('no-print')
+            });
+
+            const image = canvas.toDataURL("image/png");
+            
+            // Call API
+            const filename = `common-fee-report-${year}.png`;
+            const caption = `รายงานสรุปค่าส่วนกลาง ประจำปี ${year + 543}`;
+
+            const res = await api.sendReportToTelegram(image, caption, filename);
+
+            if (res.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ส่งรายงานเรียบร้อย!',
+                    text: 'ข้อมูลถูกส่งเข้ากลุ่ม Telegram แล้ว',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                throw new Error(res.error || 'Failed to send to Telegram');
+            }
+
+        } catch (error: any) {
+            console.error('Telegram Send failed', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถส่งข้อมูลไปที่ Telegram ได้: ' + (error.message || 'Unknown error')
+            });
+        } finally {
+            reportDiv.removeChild(timestampDiv);
+            if (scrollableDiv) {
+                scrollableDiv.style.overflow = originalOverflow;
+                scrollableDiv.style.maxHeight = originalMaxHeight;
+            }
+            if (printHeader) {
+                printHeader.classList.add('hidden');
+                printHeader.style.display = originalDisplay;
+            }
+        }
+    };
 
     const handlePrint = async () => {
         if (!reportRef.current) return;
@@ -181,6 +280,16 @@ export const CommonFeeReport: React.FC<CommonFeeReportProps> = ({ year, setYear,
                 </div>
 
                 <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
+                    {canSendTelegram && (
+                        <button
+                            onClick={handleSendTelegram}
+                            className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm font-bold text-sm"
+                        >
+                            <Send size={16} />
+                            <span>ส่ง Telegram</span>
+                        </button>
+                    )}
+
                     <button
                         onClick={handlePrint}
                         className="flex items-center space-x-2 px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm font-bold text-sm"

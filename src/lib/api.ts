@@ -282,6 +282,16 @@ export const api = {
         // Mock success
         console.log("MOCK: Sent image to Telegram", { caption, filename, imageLength: base64Image.length });
         return { status: 'success' };
+    },
+
+    sendReportToTelegram: async (base64Image: string, caption: string, filename: string) => {
+        if (USE_REAL_API && !isGuestMode) {
+            return await fetchPost('sendToTelegram', { base64Image, caption, filename });
+        }
+        await delay(1500); // Simulate network
+        // Mock success
+        console.log("MOCK: Sent report to Telegram", { caption, filename, imageLength: base64Image.length });
+        return { status: 'success' };
     }
 };
 
