@@ -45,10 +45,7 @@ const getThaiHour = (isoString: string) => {
     return getThaiDate(isoString).getUTCHours();
 };
 
-const DAILY_WAGE = 420;
-const LATE_PENALTY_THRESHOLD_1 = 15; // Minutes
-const LATE_PENALTY_THRESHOLD_2 = 30; // Minutes
-const HOURLY_RATE = DAILY_WAGE / 12;
+
 
 export function calculatePayroll(
     records: GuardTimeRecord[],
